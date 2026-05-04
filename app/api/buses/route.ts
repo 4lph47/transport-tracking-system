@@ -99,8 +99,8 @@ export async function GET(request: NextRequest) {
               },
               orderBy: {
                 id: 'asc'
-              },
-              take: 10 // Limit stops
+              }
+              // Removed limit - show all stops
             }
           }
         },
@@ -113,8 +113,8 @@ export async function GET(request: NextRequest) {
           },
           take: 1
         }
-      },
-      take: 20 // Limit buses per route
+      }
+      // Removed limit - show all buses on route
     });
 
     const [paragemLat, paragemLng] = paragem.geoLocation.split(',').map(Number);

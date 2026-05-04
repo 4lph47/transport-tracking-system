@@ -349,8 +349,8 @@ export async function getBusLocation(busId: string) {
               },
               orderBy: {
                 id: 'asc'
-              },
-              take: 10 // Limit stops
+              }
+              // Show all stops
             }
           }
         },
@@ -466,8 +466,8 @@ export async function getAllBusesWithLocations() {
               },
               orderBy: {
                 id: 'asc'
-              },
-              take: 10 // Limit stops to reduce memory
+              }
+              // Show all stops
             }
           }
         },
