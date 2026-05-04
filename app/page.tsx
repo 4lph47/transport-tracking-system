@@ -94,6 +94,8 @@ export default function LandingPage() {
       clearInterval(pollInterval);
     };
   }, []);
+
+  useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
     // Initialize MapLibre map centered on Maputo, Mozambique
