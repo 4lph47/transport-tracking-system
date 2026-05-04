@@ -79,9 +79,12 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         }
         
         let locationMenu = `CON Onde você está agora?\n`;
-        availableLocations.slice(0, 9).forEach((loc, i) => {
+        availableLocations.slice(0, 7).forEach((loc, i) => {
           locationMenu += `${i + 1}. ${loc}\n`;
         });
+        if (availableLocations.length > 7) {
+          locationMenu += `8. Outro local\n`;
+        }
         locationMenu += `0. Voltar`;
         return locationMenu;
 
@@ -93,9 +96,12 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         }
         
         let originMenu = `CON Procurar Rotas - Escolha origem:\n`;
-        availableOrigins.slice(0, 9).forEach((origin, i) => {
+        availableOrigins.slice(0, 8).forEach((origin, i) => {
           originMenu += `${i + 1}. ${origin}\n`;
         });
+        if (availableOrigins.length > 8) {
+          originMenu += `9. Outro (digitar nome)\n`;
+        }
         originMenu += `0. Voltar`;
         return originMenu;
 
@@ -107,9 +113,12 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         }
         
         let areaMenu = `CON Paragens Próximas - Escolha área:\n`;
-        availableAreas.slice(0, 9).forEach((area, i) => {
+        availableAreas.slice(0, 8).forEach((area, i) => {
           areaMenu += `${i + 1}. ${area}\n`;
         });
+        if (availableAreas.length > 8) {
+          areaMenu += `9. Outro (digitar nome)\n`;
+        }
         areaMenu += `0. Voltar`;
         return areaMenu;
 
@@ -121,9 +130,12 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         }
         
         let fareMenu = `CON Calcular Tarifa\nEscolha sua origem:\n`;
-        fareLocations.slice(0, 9).forEach((loc, i) => {
+        fareLocations.slice(0, 7).forEach((loc, i) => {
           fareMenu += `${i + 1}. ${loc}\n`;
         });
+        if (fareLocations.length > 7) {
+          fareMenu += `8. Outro\n`;
+        }
         fareMenu += `0. Voltar`;
         return fareMenu;
 
@@ -157,6 +169,10 @@ Suporte: info@transporte.mz`;
 
       const locations = await getAvailableLocations();
       
+      if (userInput === '8' || parseInt(userInput) > locations.slice(0, 7).length) {
+        return `CON Digite sua localização:`;
+      }
+
       const locationIndex = parseInt(userInput) - 1;
       if (locationIndex < 0 || locationIndex >= locations.length) {
         return `END Opção inválida.`;
@@ -179,9 +195,12 @@ Suporte: info@transporte.mz`;
       }
 
       let destMenu = `CON Você está perto de:\n${nearestStop.name}\n\nPara onde quer ir?\n`;
-      destinations.slice(0, 9).forEach((dest, i) => {
+      destinations.slice(0, 5).forEach((dest, i) => {
         destMenu += `${i + 1}. ${dest}\n`;
       });
+      if (destinations.length > 5) {
+        destMenu += `6. Outro destino\n`;
+      }
       destMenu += `0. Voltar`;
       return destMenu;
     }
@@ -195,19 +214,27 @@ Suporte: info@transporte.mz`;
 
       // Get available origins from database
       const locations = await getAvailableOrigins();
-      const locationIndex = parseInt(userInput) - 1;
-      
-      if (locationIndex < 0 || locationIndex >= locations.length) {
-        return `END Opção inválida.`;
+      let origin: string;
+
+      if (userInput === '9' || parseInt(userInput) > locations.slice(0, 8).length) {
+        // User wants to type custom location
+        return `CON Digite o nome da origem:`;
+      } else {
+        const locationIndex = parseInt(userInput) - 1;
+        if (locationIndex >= 0 && locationIndex < locations.length) {
+          origin = locations[locationIndex];
+        } else {
+          return `END Opção inválida.`;
+        }
       }
-      
-      const origin = locations[locationIndex];
 
       // Search routes from database
       const routes = await searchRoutes(origin);
 
       if (routes.length === 0) {
-        return `END Nenhuma rota encontrada de "${origin}".`;
+        return `END Nenhuma rota encontrada de "${origin}".
+        
+Tente outro nome de local.`;
       }
 
       // Show up to 9 routes (max for single digit selection)
@@ -233,13 +260,19 @@ Suporte: info@transporte.mz`;
 
       // Get available areas from database
       const areas = await getAvailableAreas();
-      const areaIndex = parseInt(userInput) - 1;
-      
-      if (areaIndex < 0 || areaIndex >= areas.length) {
-        return `END Opção inválida.`;
+      let area: string;
+
+      if (userInput === '9' || parseInt(userInput) > areas.slice(0, 8).length) {
+        // User wants to type custom area
+        return `CON Digite o nome da área:`;
+      } else {
+        const areaIndex = parseInt(userInput) - 1;
+        if (areaIndex >= 0 && areaIndex < areas.length) {
+          area = areas[areaIndex];
+        } else {
+          return `END Opção inválida.`;
+        }
       }
-      
-      const area = areas[areaIndex];
       
       const stops = await searchStops(area);
 
@@ -265,6 +298,10 @@ Suporte: info@transporte.mz`;
 
       const locations = await getAvailableLocations();
       
+      if (userInput === '8' || parseInt(userInput) > locations.slice(0, 7).length) {
+        return `CON Digite a origem:`;
+      }
+
       const locationIndex = parseInt(userInput) - 1;
       if (locationIndex < 0 || locationIndex >= locations.length) {
         return `END Opção inválida.`;
@@ -283,9 +320,12 @@ Suporte: info@transporte.mz`;
       }
       
       let destMenu = `CON De: ${origin}\n\nPara onde?\n`;
-      destinations.slice(0, 9).forEach((dest, i) => {
+      destinations.slice(0, 7).forEach((dest, i) => {
         destMenu += `${i + 1}. ${dest}\n`;
       });
+      if (destinations.length > 7) {
+        destMenu += `8. Outro\n`;
+      }
       destMenu += `0. Voltar`;
       return destMenu;
     }
@@ -326,6 +366,10 @@ Suporte: info@transporte.mz`;
       }
       
       const destinations = await getAvailableDestinations(currentLocation);
+      
+      if (thirdInput === '6' || parseInt(thirdInput) > destinations.slice(0, 5).length) {
+        return `CON Digite o destino:`;
+      }
 
       const destIndex = parseInt(thirdInput) - 1;
       if (destIndex < 0 || destIndex >= destinations.length) {
@@ -368,6 +412,97 @@ PARA: ${transportInfo.to}
 Voce sera notificado via SMS!`;
     }
 
+    // Option 2: Search routes - Handle custom location input (EXISTING)
+    if (mainChoice === '2' && secondChoice === '9') {
+      const customOrigin = thirdInput.trim();
+      
+      if (customOrigin.length < 2) {
+        return `END Por favor, digite pelo menos 2 caracteres.`;
+      }
+
+      const routes = await searchRoutes(customOrigin);
+
+      if (routes.length === 0) {
+        return `END Nenhuma rota encontrada de "${customOrigin}".`;
+      }
+
+      let response = `CON Rotas de ${customOrigin}:\n`;
+      routes.slice(0, 9).forEach((route, i) => {
+        response += `${i + 1}. ${route.destination}\n`;
+      });
+      
+      if (routes.length > 9) {
+        response += `\nMostrando 9 de ${routes.length} rotas\n`;
+      }
+      
+      response += `0. Voltar ao menu`;
+      return response;
+    }
+
+    // Option 3: Search stops - Handle custom area input (EXISTING)
+    if (mainChoice === '3' && secondChoice === '9') {
+      const customArea = thirdInput.trim();
+      
+      if (customArea.length < 2) {
+        return `END Por favor, digite pelo menos 2 caracteres.`;
+      }
+
+      const stops = await searchStops(customArea);
+
+      if (stops.length === 0) {
+        return `END Nenhuma paragem encontrada em "${customArea}".`;
+      }
+
+      let response = `CON Paragens em ${customArea}:\n\n`;
+      stops.slice(0, 9).forEach((stop, i) => {
+        response += `${i + 1}. ${stop.name}\n`;
+      });
+      
+      response += `\n0. Voltar ao menu`;
+      return response;
+    }
+
+    // Option 4: Calculate fare - Show fare calculation (NEW)
+    if (mainChoice === '4') {
+      if (thirdInput === '0') {
+        return await handleUSSD(sessionId, phoneNumber, '');
+      }
+
+      const locations = await getAvailableLocations();
+      const origin = locations[parseInt(secondChoice) - 1];
+      
+      if (!origin) {
+        return `END Origem inválida.`;
+      }
+      
+      const destinations = await getAvailableDestinations(origin);
+      
+      if (thirdInput === '8' || parseInt(thirdInput) > destinations.slice(0, 7).length) {
+        return `CON Digite o destino:`;
+      }
+
+      const destIndex = parseInt(thirdInput) - 1;
+      if (destIndex < 0 || destIndex >= destinations.length) {
+        return `END Opção inválida.`;
+      }
+
+      const destination = destinations[destIndex];
+      
+      // Calculate fare
+      const fareInfo = await calculateFare(origin, destination);
+      
+      return `END CALCULO DE TARIFA
+
+DE: ${origin}
+PARA: ${destination}
+
+DISTANCIA: ${fareInfo.distance} km
+TARIFA: ${fareInfo.fare} MT
+TEMPO: ${fareInfo.duration}
+
+ROTAS DISPONIVEIS: ${fareInfo.routeCount}`;
+    }
+
     // Handle route/stop selection from predefined locations (EXISTING)
     if (mainChoice === '2') {
       // Handle "0" to go back
@@ -381,8 +516,11 @@ Voce sera notificado via SMS!`;
         return `END Opção inválida.`;
       }
 
-      const locations = await getAvailableOrigins();
-      const origin = locations[parseInt(secondChoice) - 1];
+      // Get origin from predefined list
+      const locations = ['Matola', 'Maputo Centro', 'Baixa', 'Costa do Sol', 'Sommerschield', 'Polana', 'Aeroporto', 'Maxaquene'];
+      const locationIndex = parseInt(secondChoice) - 1;
+      const origin = locations[locationIndex];
+
       const routes = await searchRoutes(origin);
 
       if (routeIndex >= routes.length) {
@@ -414,8 +552,11 @@ Obrigado por usar nosso servico!`;
         return `END Opção inválida.`;
       }
 
-      const areas = await getAvailableAreas();
-      const area = areas[parseInt(secondChoice) - 1];
+      // Get area from predefined list
+      const areas = ['Centro', 'Baixa', 'Matola', 'Sommerschield', 'Polana', 'Costa do Sol', 'Maxaquene', 'Aeroporto'];
+      const areaIndex = parseInt(secondChoice) - 1;
+      const area = areas[areaIndex];
+
       const stops = await searchStops(area);
 
       if (stopIndex >= stops.length) {
@@ -432,29 +573,26 @@ Obrigado por usar nosso servico!`;
     }
   }
 
-  // LEVEL 4: Handle route/stop selection
+  // LEVEL 4: Handle route/stop selection after custom input
   if (level === 4) {
     const mainChoice = inputs[0];
-    const secondChoice = inputs[1];
-    const thirdInput = inputs[2];
+    const secondChoice = inputs[1]; // Should be "9"
+    const customLocation = inputs[2];
     const selection = inputs[3];
 
-    // Option 2: Route details
-    if (mainChoice === '2') {
+    if (mainChoice === '1' && secondChoice === '9') {
       // Handle "0" to go back
       if (selection === '0') {
         return await handleUSSD(sessionId, phoneNumber, '');
       }
-      
+
       const routeIndex = parseInt(selection) - 1;
       
       if (isNaN(routeIndex) || routeIndex < 0) {
         return `END Opção inválida.`;
       }
 
-      const locations = await getAvailableOrigins();
-      const origin = locations[parseInt(secondChoice) - 1];
-      const routes = await searchRoutes(origin);
+      const routes = await searchRoutes(customLocation);
 
       if (routeIndex >= routes.length) {
         return `END Opção inválida.`;
@@ -473,22 +611,19 @@ Tarifa: ${route.fare || '20-30'} MT
 Obrigado por usar nosso servico!`;
     }
 
-    // Option 3: Stop details
-    if (mainChoice === '3') {
+    if (mainChoice === '2' && secondChoice === '9') {
       // Handle "0" to go back
       if (selection === '0') {
         return await handleUSSD(sessionId, phoneNumber, '');
       }
-      
+
       const stopIndex = parseInt(selection) - 1;
       
       if (isNaN(stopIndex) || stopIndex < 0) {
         return `END Opção inválida.`;
       }
 
-      const areas = await getAvailableAreas();
-      const area = areas[parseInt(secondChoice) - 1];
-      const stops = await searchStops(area);
+      const stops = await searchStops(customLocation);
 
       if (stopIndex >= stops.length) {
         return `END Opção inválida.`;
@@ -561,24 +696,19 @@ async function getAvailableLocations(): Promise<string[]> {
 // NEW: Get available origins from database
 async function getAvailableOrigins(): Promise<string[]> {
   try {
-    // Get ALL unique terminals (both partida and chegada)
     const routes = await prisma.via.findMany({
       select: {
         terminalPartida: true,
-        terminalChegada: true,
+      },
+      distinct: ['terminalPartida'],
+      orderBy: {
+        terminalPartida: 'asc',
       },
     });
 
-    const origins = new Set<string>();
-    
-    routes.forEach(route => {
-      if (route.terminalPartida) origins.add(route.terminalPartida);
-      if (route.terminalChegada) origins.add(route.terminalChegada);
-    });
-
-    return Array.from(origins)
-      .filter(t => t && t.trim().length > 0)
-      .sort();
+    return routes
+      .map(r => r.terminalPartida)
+      .filter(t => t && t.trim().length > 0);
   } catch (error) {
     console.error('Error getting available origins:', error);
     return [];
@@ -688,16 +818,34 @@ async function getAvailableDestinations(origin: string): Promise<string[]> {
 // Database query functions
 async function searchRoutes(origin: string) {
   try {
-    const normalizedOrigin = origin.toLowerCase().trim();
+    // Map common location names to actual terminal names
+    const locationMap: { [key: string]: string[] } = {
+      'Matola': ['Matola', 'Tchumene', 'Malhampsene', 'Machava'],
+      'Maputo Centro': ['Baixa', 'Praça', 'Albert', 'Laurentina'],
+      'Baixa': ['Baixa', 'Praça', 'Albert', 'Laurentina'],
+      'Costa do Sol': ['Costa do Sol', 'Praia'],
+      'Sommerschield': ['Sommerschield'],
+      'Polana': ['Polana'],
+      'Aeroporto': ['Aeroporto'],
+      'Maxaquene': ['Maxaquene'],
+      'Museu': ['Museu'],
+      'Zimpeto': ['Zimpeto'],
+    };
+
+    // Get search terms for this location
+    const searchTerms = locationMap[origin] || [origin];
     
-    // Search for routes where origin is either departure or arrival (bidirectional)
+    // Build OR conditions for all search terms
+    const orConditions = searchTerms.flatMap(term => [
+      { terminalPartida: { contains: term } },
+      { terminalChegada: { contains: term } },
+      { nome: { contains: term } }
+    ]);
+
+    // Search in terminal names and route names (case-insensitive for SQLite)
     const routes = await prisma.via.findMany({
       where: {
-        OR: [
-          { terminalPartida: { contains: origin, mode: 'insensitive' } },
-          { terminalChegada: { contains: origin, mode: 'insensitive' } },
-          { nome: { contains: origin, mode: 'insensitive' } }
-        ]
+        OR: orConditions
       },
       select: {
         id: true,
@@ -705,48 +853,19 @@ async function searchRoutes(origin: string) {
         terminalPartida: true,
         terminalChegada: true,
       },
-      take: 20,
-      orderBy: { nome: 'asc' }
+      distinct: ['terminalChegada'], // Remove duplicates
+      take: 10,
+      orderBy: { terminalChegada: 'asc' }
     });
 
-    // Collect unique destinations (bidirectional)
-    const destinationMap = new Map<string, any>();
-    
-    routes.forEach(route => {
-      // Forward: origin is departure → add arrival
-      if (route.terminalPartida && 
-          route.terminalPartida.toLowerCase().includes(normalizedOrigin)) {
-        if (route.terminalChegada && 
-            route.terminalChegada.toLowerCase() !== normalizedOrigin) {
-          destinationMap.set(route.terminalChegada, {
-            id: route.id,
-            name: route.nome,
-            origin: route.terminalPartida,
-            destination: route.terminalChegada,
-            fare: '20-30',
-            hours: '05:00 - 22:00'
-          });
-        }
-      }
-      
-      // Reverse: origin is arrival → add departure
-      if (route.terminalChegada && 
-          route.terminalChegada.toLowerCase().includes(normalizedOrigin)) {
-        if (route.terminalPartida && 
-            route.terminalPartida.toLowerCase() !== normalizedOrigin) {
-          destinationMap.set(route.terminalPartida, {
-            id: route.id,
-            name: route.nome,
-            origin: route.terminalChegada, // Reversed
-            destination: route.terminalPartida, // Reversed
-            fare: '20-30',
-            hours: '05:00 - 22:00'
-          });
-        }
-      }
-    });
-
-    return Array.from(destinationMap.values());
+    return routes.map(route => ({
+      id: route.id,
+      name: route.nome,
+      origin: route.terminalPartida,
+      destination: route.terminalChegada,
+      fare: '20-30', // Add to your database if available
+      hours: '05:00 - 22:00' // Add to your database if available
+    }));
   } catch (error) {
     console.error('Error searching routes:', error);
     return [];
