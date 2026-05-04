@@ -406,6 +406,9 @@ export default function LandingPage() {
             bounds.extend(userLocation);
           }
           mapInstanceRef.current.fitBounds(bounds, { padding: 80 });
+        }
+      }
+    }
   }, [buses]); // Re-run when buses data changes
 
   return (
