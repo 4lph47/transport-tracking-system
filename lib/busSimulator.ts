@@ -2,18 +2,24 @@ import { prisma } from './prisma';
 
 /**
  * Simulador de Movimento de Autocarros
- * Atualiza a posição dos autocarros seguindo suas rotas
+ * Atualiza a posição dos autocarros seguindo suas rotas nas estradas reais
  */
 
 interface BusPosition {
   transporteId: string;
   currentIndex: number;
-  routePath: [number, number][];
+  routePath: [number, number][]; // Rota completa seguindo estradas (OSRM)
+  originalWaypoints: [number, number][]; // Waypoints originais
   direction: 'forward' | 'backward';
+  progress: number; // Progresso entre waypoints (0-1)
+  speed: number; // Velocidade em km/h
 }
 
 // Armazenar posição atual de cada autocarro
 const busPositions = new Map<string, BusPosition>();
+
+// Cache de rotas OSRM
+const routeCache = new Map<string, [number, number][]>();
 
 /**
  * Calcular distância entre dois pontos (em metros)
@@ -52,6 +58,53 @@ function interpolatePosition(
 }
 
 /**
+ * Obter rota seguindo estradas usando OSRM
+ */
+async function getRouteFromOSRM(waypoints: [number, number][]): Promise<[number, number][]> {
+  if (waypoints.length < 2) return waypoints;
+
+  // Criar chave de cache
+  const cacheKey = waypoints.map(w => `${w[0]},${w[1]}`).join('|');
+  
+  // Verificar cache
+  if (routeCache.has(cacheKey)) {
+    return routeCache.get(cacheKey)!;
+  }
+
+  try {
+    const waypointsString = waypoints.map(w => `${w[0]},${w[1]}`).join(';');
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${waypointsString}?overview=full&geometries=geojson`;
+
+    const response = await fetch(osrmUrl);
+    
+    if (!response.ok) {
+      console.warn(`OSRM returned status ${response.status}, using waypoints`);
+      return waypoints;
+    }
+
+    const data = await response.json();
+
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+      console.warn('OSRM failed, using waypoints');
+      return waypoints;
+    }
+
+    // Obter coordenadas da rota que segue estradas
+    const routeCoordinates = data.routes[0].geometry.coordinates as [number, number][];
+    
+    // Armazenar no cache
+    routeCache.set(cacheKey, routeCoordinates);
+    
+    console.log(`✓ OSRM route: ${waypoints.length} waypoints → ${routeCoordinates.length} points`);
+    
+    return routeCoordinates;
+  } catch (error) {
+    console.error('Error fetching OSRM route:', error);
+    return waypoints;
+  }
+}
+
+/**
  * Inicializar posições dos autocarros
  */
 export async function initializeBusPositions() {
@@ -64,72 +117,104 @@ export async function initializeBusPositions() {
   });
 
   for (const transporte of transportes) {
-    // Parsear rota do autocarro
-    let routePath: [number, number][] = [];
+    // Parsear waypoints originais
+    let originalWaypoints: [number, number][] = [];
     
     if (transporte.routePath) {
-      routePath = transporte.routePath.split(';').map((coord) => {
+      originalWaypoints = transporte.routePath.split(';').map((coord) => {
         const [lng, lat] = coord.split(',').map(Number);
         return [lng, lat] as [number, number];
       });
     } else if (transporte.via.geoLocationPath) {
-      routePath = transporte.via.geoLocationPath.split(';').map((coord) => {
+      originalWaypoints = transporte.via.geoLocationPath.split(';').map((coord) => {
         const [lng, lat] = coord.split(',').map(Number);
         return [lng, lat] as [number, number];
       });
     }
 
-    if (routePath.length > 0) {
+    if (originalWaypoints.length > 0) {
+      // Obter rota seguindo estradas
+      const routePath = await getRouteFromOSRM(originalWaypoints);
+      
+      // Velocidade aleatória entre 25-45 km/h (realista para transporte urbano)
+      const speed = 25 + Math.random() * 20;
+      
+      // Posição inicial aleatória na rota
+      const startIndex = Math.floor(Math.random() * routePath.length);
+      
       busPositions.set(transporte.id, {
         transporteId: transporte.id,
-        currentIndex: 0,
+        currentIndex: startIndex,
         routePath,
-        direction: 'forward',
+        originalWaypoints,
+        direction: Math.random() > 0.5 ? 'forward' : 'backward',
+        progress: 0,
+        speed,
       });
     }
   }
 
-  console.log(`✅ ${busPositions.size} autocarros inicializados`);
+  console.log(`✅ ${busPositions.size} autocarros inicializados com rotas OSRM`);
 }
 
 /**
  * Atualizar posição de um autocarro
  */
-async function updateBusPosition(busPosition: BusPosition) {
-  const { transporteId, currentIndex, routePath, direction } = busPosition;
+async function updateBusPosition(busPosition: BusPosition, deltaTimeSeconds: number) {
+  const { transporteId, currentIndex, routePath, direction, progress, speed } = busPosition;
 
-  // Calcular próximo índice
-  let nextIndex = currentIndex;
-  if (direction === 'forward') {
-    nextIndex = currentIndex + 1;
-    if (nextIndex >= routePath.length) {
-      // Chegou ao fim, inverter direção
-      busPosition.direction = 'backward';
-      nextIndex = routePath.length - 2;
-    }
-  } else {
-    nextIndex = currentIndex - 1;
-    if (nextIndex < 0) {
-      // Chegou ao início, inverter direção
-      busPosition.direction = 'forward';
-      nextIndex = 1;
-    }
+  if (routePath.length < 2) return;
+
+  // Calcular distância percorrida neste intervalo
+  // speed em km/h, deltaTime em segundos
+  const distanceKm = (speed * deltaTimeSeconds) / 3600; // km
+  const distanceMeters = distanceKm * 1000; // metros
+
+  // Obter pontos atual e próximo
+  const currentPoint = routePath[currentIndex];
+  let nextIndex = direction === 'forward' ? currentIndex + 1 : currentIndex - 1;
+
+  // Verificar limites
+  if (nextIndex >= routePath.length) {
+    busPosition.direction = 'backward';
+    nextIndex = routePath.length - 2;
+  } else if (nextIndex < 0) {
+    busPosition.direction = 'forward';
+    nextIndex = 1;
   }
 
-  busPosition.currentIndex = nextIndex;
+  const nextPoint = routePath[nextIndex];
 
-  // Obter nova posição
-  const [lng, lat] = routePath[nextIndex];
+  // Calcular distância entre pontos
+  const segmentDistance = calculateDistance(
+    currentPoint[1], currentPoint[0],
+    nextPoint[1], nextPoint[0]
+  );
+
+  // Calcular novo progresso
+  let newProgress = progress + (distanceMeters / segmentDistance);
+
+  // Se completou o segmento, avançar para próximo
+  if (newProgress >= 1.0) {
+    busPosition.currentIndex = nextIndex;
+    busPosition.progress = 0;
+    newProgress = 0;
+  } else {
+    busPosition.progress = newProgress;
+  }
+
+  // Interpolar posição atual
+  const [lng, lat] = interpolatePosition(currentPoint, nextPoint, newProgress);
   const newPosition = `${lat},${lng}`;
 
   // Obter posições anteriores para histórico
-  const prevIndex1 = Math.max(0, nextIndex - 1);
-  const prevIndex2 = Math.max(0, nextIndex - 2);
-  const prevIndex3 = Math.max(0, nextIndex - 3);
+  const hist1Index = Math.max(0, currentIndex - 1);
+  const hist2Index = Math.max(0, currentIndex - 2);
+  const hist3Index = Math.max(0, currentIndex - 3);
 
-  const [lng1, lat1] = routePath[prevIndex1];
-  const [lng2, lat2] = routePath[prevIndex2];
-  const [lng3, lat3] = routePath[prevIndex3];
+  const [lng1, lat1] = routePath[hist1Index];
+  const [lng2, lat2] = routePath[hist2Index];
+  const [lng3, lat3] = routePath[hist3Index];
 
   try {
     // Atualizar posição do transporte
@@ -144,12 +229,14 @@ async function updateBusPosition(busPosition: BusPosition) {
       orderBy: { createdAt: 'desc' },
     });
 
+    const geoDirection = direction === 'forward' ? 'Indo' : 'Voltando';
+
     if (existingGeoLocation) {
       await prisma.geoLocation.update({
         where: { id: existingGeoLocation.id },
         data: {
           geoLocationTransporte: newPosition,
-          geoDirection: direction === 'forward' ? 'Indo' : 'Voltando',
+          geoDirection,
           geoLocationHist1: `${lat1},${lng1}`,
           geoLocationHist2: `${lat2},${lng2}`,
           geoLocationHist3: `${lat3},${lng3}`,
@@ -158,6 +245,28 @@ async function updateBusPosition(busPosition: BusPosition) {
           geoDateTime3: new Date(Date.now() - 15 * 60000),
         },
       });
+    } else {
+      // Criar novo registro
+      const transporte = await prisma.transporte.findUnique({
+        where: { id: transporteId },
+      });
+
+      if (transporte) {
+        await prisma.geoLocation.create({
+          data: {
+            geoLocationTransporte: newPosition,
+            geoDirection,
+            codigoTransporte: transporte.codigo,
+            transporteId: transporte.id,
+            geoLocationHist1: `${lat1},${lng1}`,
+            geoLocationHist2: `${lat2},${lng2}`,
+            geoLocationHist3: `${lat3},${lng3}`,
+            geoDateTime1: new Date(Date.now() - 5 * 60000),
+            geoDateTime2: new Date(Date.now() - 10 * 60000),
+            geoDateTime3: new Date(Date.now() - 15 * 60000),
+          },
+        });
+      }
     }
   } catch (error) {
     console.error(`Erro ao atualizar posição do autocarro ${transporteId}:`, error);
@@ -249,21 +358,29 @@ async function checkAndNotifyUsers() {
  * Loop principal - atualiza posições a cada intervalo
  */
 let simulationInterval: NodeJS.Timeout | null = null;
+let lastUpdateTime: number = Date.now();
 
-export function startBusSimulation(intervalMs: number = 30000) {
+export function startBusSimulation(intervalMs: number = 10000) {
   if (simulationInterval) {
     console.log('⚠️ Simulação já está rodando');
     return;
   }
 
-  console.log(`🚀 Iniciando simulação de autocarros (intervalo: ${intervalMs}ms)`);
+  console.log(`🚀 Iniciando simulação de autocarros (intervalo: ${intervalMs}ms = ${intervalMs/1000}s)`);
+  lastUpdateTime = Date.now();
 
   simulationInterval = setInterval(async () => {
-    console.log(`🔄 Atualizando posições de ${busPositions.size} autocarros...`);
+    const currentTime = Date.now();
+    const deltaTimeMs = currentTime - lastUpdateTime;
+    const deltaTimeSeconds = deltaTimeMs / 1000;
+    
+    lastUpdateTime = currentTime;
+
+    console.log(`🔄 Atualizando posições de ${busPositions.size} autocarros (Δt=${deltaTimeSeconds.toFixed(1)}s)...`);
 
     // Atualizar posição de cada autocarro
     const updates = Array.from(busPositions.values()).map((busPosition) =>
-      updateBusPosition(busPosition)
+      updateBusPosition(busPosition, deltaTimeSeconds)
     );
 
     await Promise.all(updates);
