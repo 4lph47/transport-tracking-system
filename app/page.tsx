@@ -54,7 +54,6 @@ export default function LandingPage() {
           console.log('Fetched buses:', data);
           if (data.buses) {
             setBuses(data.buses);
-            updateBusMarkers(data.buses);
           }
           setLoading(false);
         })
@@ -95,9 +94,7 @@ export default function LandingPage() {
       clearInterval(pollInterval);
     };
   }, []);
-
-  useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current || loading) return;
+    if (!mapRef.current || mapInstanceRef.current) return;
 
     // Initialize MapLibre map centered on Maputo, Mozambique
     const map = new maplibregl.Map({
@@ -158,60 +155,98 @@ export default function LandingPage() {
         },
         firstSymbolId
       );
+    });
 
-      // Display all buses from API
-      console.log('Adding', buses.length, 'buses to map');
-      
-      buses.forEach(bus => {
-        console.log(`Bus ${bus.matricula}: lat=${bus.latitude}, lng=${bus.longitude}`);
-        
-        const el = document.createElement('div');
-        el.innerHTML = `
-          <svg width="32" height="38" viewBox="0 0 32 38" style="display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); cursor: pointer;">
-            <defs>
-              <linearGradient id="busGrad${bus.id}" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:#3b82f6"/>
-                <stop offset="100%" style="stop-color:#1e40af"/>
-              </linearGradient>
-            </defs>
-            <rect x="6" y="10" width="20" height="22" rx="1.5" fill="url(#busGrad${bus.id})" stroke="#0a1f5c" stroke-width="1"/>
-            <rect x="8" y="8" width="16" height="3" rx="0.5" fill="#1e3a8a"/>
-            <rect x="8" y="12" width="16" height="5" rx="0.5" fill="#e0f2fe" opacity="0.8"/>
-            <rect x="7" y="18" width="4" height="4" rx="0.3" fill="#dbeafe" opacity="0.7"/>
-            <rect x="7" y="24" width="4" height="4" rx="0.3" fill="#dbeafe" opacity="0.7"/>
-            <rect x="21" y="18" width="4" height="4" rx="0.3" fill="#bfdbfe" opacity="0.6"/>
-            <rect x="21" y="24" width="4" height="4" rx="0.3" fill="#bfdbfe" opacity="0.6"/>
-            <circle cx="11" cy="7" r="2" fill="#fef08a" stroke="#fff" stroke-width="1"/>
-            <circle cx="21" cy="7" r="2" fill="#fef08a" stroke="#fff" stroke-width="1"/>
-            <circle cx="10" cy="33" r="2.5" fill="#1f2937"/>
-            <circle cx="22" cy="33" r="2.5" fill="#1f2937"/>
-            <circle cx="11" cy="34" r="1" fill="#ef4444"/>
-            <circle cx="21" cy="34" r="1" fill="#ef4444"/>
-          </svg>
-        `;
+    // Cleanup
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []); // Only run once on mount
 
-        // Add click handler to show route
-        el.addEventListener('click', () => {
-          console.log('Bus clicked:', bus.id, bus.matricula);
-          setSelectedBusId(bus.id);
-          showBusRoute(bus);
-        });
+  // Separate effect to add/update bus markers when buses change
+  useEffect(() => {
+    if (!mapInstanceRef.current || buses.length === 0) return;
 
-        const marker = new maplibregl.Marker({ element: el })
-          .setLngLat([bus.longitude, bus.latitude])
-          .setPopup(
-            new maplibregl.Popup({ offset: 20 }).setHTML(
-              `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`
-            )
-          )
-          .addTo(map);
+    const map = mapInstanceRef.current;
 
-        // Store marker reference for updates
-        busMarkersRef.current.set(bus.id, marker);
+    // Wait for map to be loaded
+    if (!map.loaded()) {
+      map.once('load', () => {
+        addOrUpdateBusMarkers(buses);
       });
+    } else {
+      addOrUpdateBusMarkers(buses);
+    }
 
-      // Function to show bus route
-      function showBusRoute(bus: Bus) {
+    function addOrUpdateBusMarkers(busesData: Bus[]) {
+      busesData.forEach(bus => {
+        const existingMarker = busMarkersRef.current.get(bus.id);
+
+        if (existingMarker) {
+          // Update existing marker position smoothly
+          existingMarker.setLngLat([bus.longitude, bus.latitude]);
+          
+          // Update popup content
+          const popup = existingMarker.getPopup();
+          if (popup) {
+            popup.setHTML(
+              `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`
+            );
+          }
+        } else {
+          // Create new marker
+          const el = document.createElement('div');
+          el.innerHTML = `
+            <svg width="32" height="38" viewBox="0 0 32 38" style="display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); cursor: pointer;">
+              <defs>
+                <linearGradient id="busGrad${bus.id}" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:#3b82f6"/>
+                  <stop offset="100%" style="stop-color:#1e40af"/>
+                </linearGradient>
+              </defs>
+              <rect x="6" y="10" width="20" height="22" rx="1.5" fill="url(#busGrad${bus.id})" stroke="#0a1f5c" stroke-width="1"/>
+              <rect x="8" y="8" width="16" height="3" rx="0.5" fill="#1e3a8a"/>
+              <rect x="8" y="12" width="16" height="5" rx="0.5" fill="#e0f2fe" opacity="0.8"/>
+              <rect x="7" y="18" width="4" height="4" rx="0.3" fill="#dbeafe" opacity="0.7"/>
+              <rect x="7" y="24" width="4" height="4" rx="0.3" fill="#dbeafe" opacity="0.7"/>
+              <rect x="21" y="18" width="4" height="4" rx="0.3" fill="#bfdbfe" opacity="0.6"/>
+              <rect x="21" y="24" width="4" height="4" rx="0.3" fill="#bfdbfe" opacity="0.6"/>
+              <circle cx="11" cy="7" r="2" fill="#fef08a" stroke="#fff" stroke-width="1"/>
+              <circle cx="21" cy="7" r="2" fill="#fef08a" stroke="#fff" stroke-width="1"/>
+              <circle cx="10" cy="33" r="2.5" fill="#1f2937"/>
+              <circle cx="22" cy="33" r="2.5" fill="#1f2937"/>
+              <circle cx="11" cy="34" r="1" fill="#ef4444"/>
+              <circle cx="21" cy="34" r="1" fill="#ef4444"/>
+            </svg>
+          `;
+
+          // Add click handler to show route
+          el.addEventListener('click', () => {
+            console.log('Bus clicked:', bus.id, bus.matricula);
+            setSelectedBusId(bus.id);
+            showBusRoute(bus);
+          });
+
+          const marker = new maplibregl.Marker({ element: el })
+            .setLngLat([bus.longitude, bus.latitude])
+            .setPopup(
+              new maplibregl.Popup({ offset: 20 }).setHTML(
+                `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`
+              )
+            )
+            .addTo(map);
+
+          // Store marker reference for updates
+          busMarkersRef.current.set(bus.id, marker);
+        }
+      });
+    }
+
+    // Function to show bus route
+    function showBusRoute(bus: Bus) {
         if (!mapInstanceRef.current) return;
 
         // Remove existing route layer if any
@@ -371,39 +406,7 @@ export default function LandingPage() {
             bounds.extend(userLocation);
           }
           mapInstanceRef.current.fitBounds(bounds, { padding: 80 });
-        }
-      }
-    });
-
-    // Cleanup
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [loading, buses]);
-
-  // Function to update bus markers with new positions
-  const updateBusMarkers = (updatedBuses: Bus[]) => {
-    if (!mapInstanceRef.current) return;
-
-    updatedBuses.forEach(bus => {
-      const marker = busMarkersRef.current.get(bus.id);
-      if (marker) {
-        // Update marker position with smooth animation
-        marker.setLngLat([bus.longitude, bus.latitude]);
-        
-        // Update popup content
-        const popup = marker.getPopup();
-        if (popup) {
-          popup.setHTML(
-            `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`
-          );
-        }
-      }
-    });
-  };
+  }, [buses]); // Re-run when buses data changes
 
   return (
     <>
