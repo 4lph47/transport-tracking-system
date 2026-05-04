@@ -74,26 +74,47 @@ export async function GET(request: NextRequest) {
       where: {
         viaId: viaId,
       },
-      include: {
+      select: {
+        id: true,
+        matricula: true,
+        currGeoLocation: true,
         via: {
-          include: {
+          select: {
+            id: true,
+            nome: true,
+            codigo: true,
+            terminalPartida: true,
+            terminalChegada: true,
+            geoLocationPath: true,
             paragens: {
-              include: {
-                paragem: true,
+              select: {
+                terminalBoolean: true,
+                paragem: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    geoLocation: true
+                  }
+                }
               },
               orderBy: {
-                id: 'asc',
+                id: 'asc'
               },
-            },
-          },
+              take: 10 // Limit stops
+            }
+          }
         },
         geoLocations: {
-          orderBy: {
-            createdAt: 'desc',
+          select: {
+            geoLocationTransporte: true
           },
-          take: 1,
-        },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1
+        }
       },
+      take: 20 // Limit buses per route
     });
 
     const [paragemLat, paragemLng] = paragem.geoLocation.split(',').map(Number);
@@ -191,7 +212,8 @@ export async function GET(request: NextRequest) {
 
       let routeCoords: [number, number][] = [];
       if (transporte.via.geoLocationPath) {
-        routeCoords = transporte.via.geoLocationPath.split(';').map((coord) => {
+        // Limit route coords to 50 points to reduce memory
+        routeCoords = transporte.via.geoLocationPath.split(';').slice(0, 50).map((coord) => {
           const [lng, lat] = coord.split(',').map(Number);
           return [lng, lat];
         });

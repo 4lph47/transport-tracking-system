@@ -317,27 +317,47 @@ export function getCurrentStreetLocation(routeCode: string, progress: number): {
 }
 
 /**
- * Get bus current location with street name
+ * Get bus current location with street name (optimized)
  * This is the shared function used by both webapp and USSD
  */
 export async function getBusLocation(busId: string) {
   try {
     const bus = await prisma.transporte.findUnique({
       where: { id: busId },
-      include: {
+      select: {
+        id: true,
+        matricula: true,
+        currGeoLocation: true,
         via: {
-          include: {
+          select: {
+            id: true,
+            nome: true,
+            codigo: true,
+            terminalPartida: true,
+            terminalChegada: true,
+            geoLocationPath: true,
             paragens: {
-              include: {
-                paragem: true
+              select: {
+                terminalBoolean: true,
+                paragem: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    geoLocation: true
+                  }
+                }
               },
               orderBy: {
                 id: 'asc'
-              }
+              },
+              take: 10 // Limit stops
             }
           }
         },
         geoLocations: {
+          select: {
+            geoLocationTransporte: true
+          },
           orderBy: {
             createdAt: 'desc'
           },
@@ -358,7 +378,6 @@ export async function getBusLocation(busId: string) {
     } else if (bus.geoLocations.length > 0) {
       [currentLat, currentLng] = bus.geoLocations[0].geoLocationTransporte.split(',').map(Number);
     } else {
-      // Default to first stop
       const firstStop = bus.via.paragens[0];
       if (firstStop && firstStop.paragem.geoLocation) {
         [currentLat, currentLng] = firstStop.paragem.geoLocation.split(',').map(Number);
@@ -368,13 +387,13 @@ export async function getBusLocation(busId: string) {
       }
     }
 
-    // Calculate progress along route (simulated for now)
-    const progress = Math.random(); // In production, calculate from actual position
+    // Calculate progress (simulated)
+    const progress = Math.random();
 
-    // Get street-based location
+    // Get street location
     const streetLocation = getCurrentStreetLocation(bus.via.codigo, progress);
 
-    // Get route stops
+    // Get stops
     const stops = bus.via.paragens.map((vp) => {
       const [lat, lng] = vp.paragem.geoLocation.split(',').map(Number);
       return {
@@ -386,9 +405,9 @@ export async function getBusLocation(busId: string) {
       };
     });
 
-    // Get route path coordinates
+    // Get route coords (limit to 50 points to reduce memory)
     const routeCoords = bus.via.geoLocationPath
-      ? bus.via.geoLocationPath.split(';').map((coord) => {
+      ? bus.via.geoLocationPath.split(';').slice(0, 50).map((coord) => {
           const [lng, lat] = coord.split(',').map(Number);
           return [lng, lat] as [number, number];
         })
@@ -417,25 +436,45 @@ export async function getBusLocation(busId: string) {
 }
 
 /**
- * Get all buses with their current locations
+ * Get all buses with their current locations (optimized - single query)
  */
 export async function getAllBusesWithLocations() {
   try {
     const buses = await prisma.transporte.findMany({
-      include: {
+      select: {
+        id: true,
+        matricula: true,
+        currGeoLocation: true,
         via: {
-          include: {
+          select: {
+            id: true,
+            nome: true,
+            codigo: true,
+            terminalPartida: true,
+            terminalChegada: true,
+            geoLocationPath: true,
             paragens: {
-              include: {
-                paragem: true
+              select: {
+                terminalBoolean: true,
+                paragem: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    geoLocation: true
+                  }
+                }
               },
               orderBy: {
                 id: 'asc'
-              }
+              },
+              take: 10 // Limit stops to reduce memory
             }
           }
         },
         geoLocations: {
+          select: {
+            geoLocationTransporte: true
+          },
           orderBy: {
             createdAt: 'desc'
           },
@@ -444,14 +483,70 @@ export async function getAllBusesWithLocations() {
       }
     });
 
-    const busesWithLocations = await Promise.all(
-      buses.map(async (bus) => {
-        const location = await getBusLocation(bus.id);
-        return location;
-      })
-    );
+    // Process buses without additional queries
+    const busesWithLocations = buses.map((bus) => {
+      // Get current coordinates
+      let currentLat, currentLng;
+      
+      if (bus.currGeoLocation) {
+        [currentLat, currentLng] = bus.currGeoLocation.split(',').map(Number);
+      } else if (bus.geoLocations.length > 0) {
+        [currentLat, currentLng] = bus.geoLocations[0].geoLocationTransporte.split(',').map(Number);
+      } else {
+        const firstStop = bus.via.paragens[0];
+        if (firstStop && firstStop.paragem.geoLocation) {
+          [currentLat, currentLng] = firstStop.paragem.geoLocation.split(',').map(Number);
+        } else {
+          currentLat = -25.9692;
+          currentLng = 32.5732;
+        }
+      }
 
-    return busesWithLocations.filter(bus => bus !== null);
+      // Calculate progress (simulated)
+      const progress = Math.random();
+
+      // Get street location
+      const streetLocation = getCurrentStreetLocation(bus.via.codigo, progress);
+
+      // Get stops
+      const stops = bus.via.paragens.map((vp) => {
+        const [lat, lng] = vp.paragem.geoLocation.split(',').map(Number);
+        return {
+          id: vp.paragem.id,
+          nome: vp.paragem.nome,
+          latitude: lat,
+          longitude: lng,
+          isTerminal: vp.terminalBoolean
+        };
+      });
+
+      // Get route coords (limit to reduce memory)
+      const routeCoords = bus.via.geoLocationPath
+        ? bus.via.geoLocationPath.split(';').slice(0, 50).map((coord) => {
+            const [lng, lat] = coord.split(',').map(Number);
+            return [lng, lat] as [number, number];
+          })
+        : [];
+
+      return {
+        id: bus.id,
+        matricula: bus.matricula,
+        via: bus.via.nome,
+        viaId: bus.via.id,
+        viaCodigo: bus.via.codigo,
+        direcao: `${bus.via.terminalPartida} → ${bus.via.terminalChegada}`,
+        latitude: currentLat,
+        longitude: currentLng,
+        streetLocation: streetLocation.description,
+        streetName: streetLocation.street,
+        nearLocation: streetLocation.location,
+        status: 'Em Circulação',
+        routeCoords,
+        stops
+      };
+    });
+
+    return busesWithLocations;
   } catch (error) {
     console.error('Error getting all buses:', error);
     return [];
