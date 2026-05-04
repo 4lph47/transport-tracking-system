@@ -652,7 +652,6 @@ async function getAvailableLocations(): Promise<string[]> {
         terminalPartida: true,
         terminalChegada: true,
       },
-      distinct: ['terminalPartida'],
     });
 
     const locations = new Set<string>();
@@ -661,6 +660,31 @@ async function getAvailableLocations(): Promise<string[]> {
       if (route.terminalPartida) locations.add(route.terminalPartida);
       if (route.terminalChegada) locations.add(route.terminalChegada);
     });
+
+    // Also add major stops from paragem table
+    const majorStops = await prisma.paragem.findMany({
+      select: {
+        nome: true,
+      },
+      where: {
+        OR: [
+          { nome: { contains: 'Terminal' } },
+          { nome: { contains: 'Albasine' } },
+          { nome: { contains: 'Matola' } },
+          { nome: { contains: 'Baixa' } },
+          { nome: { contains: 'Museu' } },
+          { nome: { contains: 'Zimpeto' } },
+        ]
+      }
+    });
+
+    majorStops.forEach(stop => {
+      // Extract main location name (remove parentheses content)
+      const mainName = stop.nome.split('(')[0].trim();
+      locations.add(mainName);
+    });
+
+    console.log('📍 Available locations:', Array.from(locations).sort());
 
     return Array.from(locations).sort();
   } catch (error) {
@@ -724,25 +748,67 @@ async function getAvailableAreas(): Promise<string[]> {
 // NEW: Get available destinations from a given origin
 async function getAvailableDestinations(origin: string): Promise<string[]> {
   try {
+    // Normalizar origem para busca (remover acentos, lowercase)
+    const normalizedOrigin = origin.toLowerCase().trim();
+    
+    // Buscar rotas onde a origem pode ser terminal de partida OU chegada
     const routes = await prisma.via.findMany({
       where: {
         OR: [
-          { terminalPartida: { contains: origin } },
-          { nome: { contains: origin } }
+          { terminalPartida: { contains: origin, mode: 'insensitive' } },
+          { terminalChegada: { contains: origin, mode: 'insensitive' } },
+          { nome: { contains: origin, mode: 'insensitive' } }
         ]
       },
       select: {
+        terminalPartida: true,
         terminalChegada: true,
-      },
-      distinct: ['terminalChegada'],
-      orderBy: {
-        terminalChegada: 'asc',
+        nome: true,
       },
     });
 
-    return routes
-      .map(r => r.terminalChegada)
-      .filter(t => t && t.trim().length > 0 && t !== origin);
+    console.log(`🔍 Searching destinations from "${origin}":`, {
+      normalizedOrigin,
+      routesFound: routes.length,
+      routes: routes.map(r => ({ 
+        partida: r.terminalPartida, 
+        chegada: r.terminalChegada, 
+        nome: r.nome 
+      }))
+    });
+
+    // Coletar todos os destinos únicos
+    const destinations = new Set<string>();
+    
+    routes.forEach(route => {
+      // Se a origem corresponde ao terminal de partida, adicionar destino
+      if (route.terminalPartida && 
+          route.terminalPartida.toLowerCase().includes(normalizedOrigin)) {
+        if (route.terminalChegada) {
+          destinations.add(route.terminalChegada);
+          console.log(`✅ Added destination: ${route.terminalChegada} (from partida match)`);
+        }
+      }
+      
+      // Se a origem corresponde ao terminal de chegada, adicionar partida (rota inversa)
+      if (route.terminalChegada && 
+          route.terminalChegada.toLowerCase().includes(normalizedOrigin)) {
+        if (route.terminalPartida) {
+          destinations.add(route.terminalPartida);
+          console.log(`✅ Added destination: ${route.terminalPartida} (from chegada match - reverse)`);
+        }
+      }
+    });
+
+    // Filtrar origem e retornar array ordenado
+    const finalDestinations = Array.from(destinations)
+      .filter(d => d && d.trim().length > 0 && 
+                   !d.toLowerCase().includes(normalizedOrigin))
+      .sort();
+
+    console.log(`📍 Final destinations for "${origin}":`, finalDestinations);
+
+    return finalDestinations;
   } catch (error) {
     console.error('Error getting available destinations:', error);
     return [];
