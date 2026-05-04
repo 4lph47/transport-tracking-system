@@ -408,9 +408,8 @@ export default function LandingPage() {
             bounds.extend(userLocation);
           }
           mapInstanceRef.current.fitBounds(bounds, { padding: 80 });
-        }
-      }
-    }
+        } // Close drawRoute function
+      } // Close showBusRoute function
   }, [buses]); // Re-run when buses data changes
 
   return (
