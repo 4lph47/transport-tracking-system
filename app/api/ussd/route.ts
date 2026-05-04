@@ -1138,6 +1138,7 @@ async function createMissionForUser(phoneNumber: string, from: string, to: strin
           telefone: phoneNumber,
           email: `${phoneNumber}@temp.com`,
           senha: 'temp', // Will be updated when user registers
+          mISSION: `USSD-${phoneNumber}-${Date.now()}`, // Unique mission identifier
         }
       });
     }
