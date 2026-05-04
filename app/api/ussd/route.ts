@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Process the USSD request
     const response = await handleUSSD(sessionId, phoneNumber, text);
 
-    console.log('📤 USSD Response:', response);
+    console.log('📤 USSD Response:', response.substring(0, 100) + (response.length > 100 ? '...' : ''));
 
     // Return plain text response
     return new NextResponse(response, {
@@ -72,60 +72,40 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 
     switch (choice) {
       case '1':
-        // Find transport now - Get available locations from database
-        const availableLocations = await getAvailableLocations();
-        if (availableLocations.length === 0) {
-          return `END Nenhuma localização disponível no momento.`;
-        }
+        // Find transport now - First ask for region
+        return `CON Encontrar Transporte
         
-        let locationMenu = `CON Onde você está agora?\n`;
-        availableLocations.slice(0, 9).forEach((loc, i) => {
-          locationMenu += `${i + 1}. ${loc}\n`;
-        });
-        locationMenu += `0. Voltar`;
-        return locationMenu;
+Em que região você está?
+1. Maputo
+2. Matola
+0. Voltar`;
 
       case '2':
-        // Search routes - Get available origins from database
-        const availableOrigins = await getAvailableOrigins();
-        if (availableOrigins.length === 0) {
-          return `END Nenhuma rota disponível no momento.`;
-        }
-        
-        let originMenu = `CON Procurar Rotas - Escolha origem:\n`;
-        availableOrigins.slice(0, 9).forEach((origin, i) => {
-          originMenu += `${i + 1}. ${origin}\n`;
-        });
-        originMenu += `0. Voltar`;
-        return originMenu;
+        // Search routes - First ask for region
+        return `CON Procurar Rotas
+
+Em que região você está?
+1. Maputo
+2. Matola
+0. Voltar`;
 
       case '3':
-        // Nearest stops - Get available areas from database
-        const availableAreas = await getAvailableAreas();
-        if (availableAreas.length === 0) {
-          return `END Nenhuma paragem disponível no momento.`;
-        }
-        
-        let areaMenu = `CON Paragens Próximas - Escolha área:\n`;
-        availableAreas.slice(0, 9).forEach((area, i) => {
-          areaMenu += `${i + 1}. ${area}\n`;
-        });
-        areaMenu += `0. Voltar`;
-        return areaMenu;
+        // Nearest stops - First ask for region
+        return `CON Paragens Próximas
+
+Em que região você está?
+1. Maputo
+2. Matola
+0. Voltar`;
 
       case '4':
-        // Calculate fare - Get available locations from database
-        const fareLocations = await getAvailableLocations();
-        if (fareLocations.length === 0) {
-          return `END Nenhuma localização disponível no momento.`;
-        }
-        
-        let fareMenu = `CON Calcular Tarifa\nEscolha sua origem:\n`;
-        fareLocations.slice(0, 9).forEach((loc, i) => {
-          fareMenu += `${i + 1}. ${loc}\n`;
-        });
-        fareMenu += `0. Voltar`;
-        return fareMenu;
+        // Calculate fare - First ask for region
+        return `CON Calcular Tarifa
+
+Região de origem:
+1. Maputo
+2. Matola
+0. Voltar`;
 
       case '5':
         return `END Sistema de Transportes - Ajuda
@@ -143,207 +123,319 @@ Suporte: info@transporte.mz`;
     }
   }
 
-  // LEVEL 2: Process user input based on previous choice
+  // LEVEL 2: Region selected, now choose neighborhood
   if (level === 2) {
     const mainChoice = inputs[0];
-    const userInput = inputs[1];
+    const regionChoice = inputs[1];
 
-    // Option 1: Find transport now (NEW)
+    // Handle back
+    if (regionChoice === '0') {
+      return await handleUSSD(sessionId, phoneNumber, '');
+    }
+
+    const region = regionChoice === '1' ? 'Maputo' : 'Matola';
+
+    // Option 1: Find transport now
     if (mainChoice === '1') {
-      // Handle back
-      if (userInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
+      const neighborhoods = await getNeighborhoodsByRegion(region);
+      
+      if (neighborhoods.length === 0) {
+        // This should never happen as neighborhoods are hardcoded
+        return `END Erro no sistema. Por favor, tente novamente mais tarde.`;
       }
 
-      const locations = await getAvailableLocations();
-      
-      const locationIndex = parseInt(userInput) - 1;
-      if (locationIndex < 0 || locationIndex >= locations.length) {
-        return `END Opção inválida.`;
-      }
-
-      const currentLocation = locations[locationIndex];
-      
-      // Find nearest stop
-      const nearestStop = await findNearestStop(currentLocation);
-      
-      if (!nearestStop) {
-        return `END Nenhuma paragem encontrada perto de ${currentLocation}.`;
-      }
-
-      // Get available destinations from current location
-      const destinations = await getAvailableDestinations(currentLocation);
-      
-      if (destinations.length === 0) {
-        return `END Nenhum transporte disponível de ${currentLocation}.`;
-      }
-
-      let destMenu = `CON Você está perto de:\n${nearestStop.name}\n\nPara onde quer ir?\n`;
-      destinations.slice(0, 9).forEach((dest, i) => {
-        destMenu += `${i + 1}. ${dest}\n`;
+      let neighborhoodMenu = `CON ${region} - Escolha o bairro:\n`;
+      neighborhoods.slice(0, 9).forEach((neighborhood, i) => {
+        neighborhoodMenu += `${i + 1}. ${neighborhood}\n`;
       });
-      destMenu += `0. Voltar`;
-      return destMenu;
+      neighborhoodMenu += `0. Voltar`;
+      return neighborhoodMenu;
     }
 
-    // Option 2: Search routes (EXISTING)
+    // Option 2: Search routes
     if (mainChoice === '2') {
-      // Handle back
-      if (userInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
-      }
-
-      // Get available origins from database
-      const locations = await getAvailableOrigins();
-      const locationIndex = parseInt(userInput) - 1;
+      const neighborhoods = await getNeighborhoodsByRegion(region);
       
-      if (locationIndex < 0 || locationIndex >= locations.length) {
-        return `END Opção inválida.`;
-      }
-      
-      const origin = locations[locationIndex];
-
-      // Search routes from database
-      const routes = await searchRoutes(origin);
-
-      if (routes.length === 0) {
-        return `END Nenhuma rota encontrada de "${origin}".`;
+      if (neighborhoods.length === 0) {
+        // This should never happen as neighborhoods are hardcoded
+        return `END Erro no sistema. Por favor, tente novamente mais tarde.`;
       }
 
-      // Show up to 9 routes (max for single digit selection)
-      let response = `CON Rotas de ${origin}:\n`;
-      routes.slice(0, 9).forEach((route, i) => {
-        response += `${i + 1}. ${route.destination}\n`;
+      let neighborhoodMenu = `CON ${region} - Escolha o bairro:\n`;
+      neighborhoods.slice(0, 9).forEach((neighborhood, i) => {
+        neighborhoodMenu += `${i + 1}. ${neighborhood}\n`;
       });
-      
-      if (routes.length > 9) {
-        response += `\nMostrando 9 de ${routes.length} rotas\n`;
-      }
-      
-      response += `0. Voltar ao menu`;
-      return response;
+      neighborhoodMenu += `0. Voltar`;
+      return neighborhoodMenu;
     }
 
-    // Option 3: Nearest stops (EXISTING)
+    // Option 3: Nearest stops
     if (mainChoice === '3') {
-      // Handle back
-      if (userInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
+      const neighborhoods = await getNeighborhoodsByRegion(region);
+      
+      if (neighborhoods.length === 0) {
+        // This should never happen as neighborhoods are hardcoded
+        return `END Erro no sistema. Por favor, tente novamente mais tarde.`;
       }
 
-      // Get available areas from database
-      const areas = await getAvailableAreas();
-      const areaIndex = parseInt(userInput) - 1;
-      
-      if (areaIndex < 0 || areaIndex >= areas.length) {
-        return `END Opção inválida.`;
-      }
-      
-      const area = areas[areaIndex];
-      
-      const stops = await searchStops(area);
-
-      if (stops.length === 0) {
-        return `END Nenhuma paragem encontrada em "${area}".`;
-      }
-
-      let response = `CON Paragens em ${area}:\n\n`;
-      stops.slice(0, 9).forEach((stop, i) => {
-        response += `${i + 1}. ${stop.name}\n`;
+      let neighborhoodMenu = `CON ${region} - Escolha o bairro:\n`;
+      neighborhoods.slice(0, 9).forEach((neighborhood, i) => {
+        neighborhoodMenu += `${i + 1}. ${neighborhood}\n`;
       });
-      
-      response += `\n0. Voltar ao menu`;
-      return response;
+      neighborhoodMenu += `0. Voltar`;
+      return neighborhoodMenu;
     }
 
-    // Option 4: Calculate fare (NEW)
+    // Option 4: Calculate fare
     if (mainChoice === '4') {
-      // Handle back
-      if (userInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
+      const neighborhoods = await getNeighborhoodsByRegion(region);
+      
+      if (neighborhoods.length === 0) {
+        // This should never happen as neighborhoods are hardcoded
+        return `END Erro no sistema. Por favor, tente novamente mais tarde.`;
       }
 
-      const locations = await getAvailableLocations();
-      
-      const locationIndex = parseInt(userInput) - 1;
-      if (locationIndex < 0 || locationIndex >= locations.length) {
-        return `END Opção inválida.`;
-      }
-
-      const origin = locations[locationIndex];
-      
-      // Get available destinations from origin
-      const allDestinations = await getAvailableDestinations(origin);
-      
-      // Filter out same origin
-      const destinations = allDestinations.filter(d => d !== origin);
-      
-      if (destinations.length === 0) {
-        return `END Nenhum destino disponível de ${origin}.`;
-      }
-      
-      let destMenu = `CON De: ${origin}\n\nPara onde?\n`;
-      destinations.slice(0, 9).forEach((dest, i) => {
-        destMenu += `${i + 1}. ${dest}\n`;
+      let neighborhoodMenu = `CON ${region} - Origem (bairro):\n`;
+      neighborhoods.slice(0, 9).forEach((neighborhood, i) => {
+        neighborhoodMenu += `${i + 1}. ${neighborhood}\n`;
       });
-      destMenu += `0. Voltar`;
-      return destMenu;
-    }
-
-    // Option 5: Saved routes submenu (EXISTING)
-    if (mainChoice === '3') {
-      if (userInput === '1') {
-        const saved = await getSavedRoutes(phoneNumber);
-        let response = `END Minhas Rotas Salvas:\n\n`;
-        saved.forEach((route, i) => {
-          response += `${i + 1}. ${route.origin} → ${route.destination}\n`;
-        });
-        return response;
-      }
-      if (userInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
-      }
+      neighborhoodMenu += `0. Voltar`;
+      return neighborhoodMenu;
     }
   }
 
-  // LEVEL 3: Show route details OR handle custom location input OR show transport info
+  // LEVEL 3: Neighborhood selected, now choose stop/paragem
   if (level === 3) {
     const mainChoice = inputs[0];
-    const secondChoice = inputs[1];
-    const thirdInput = inputs[2];
+    const regionChoice = inputs[1];
+    const neighborhoodChoice = inputs[2];
 
-    // Option 1: Find transport now - Show available transports (NEW)
+    // Handle back
+    if (neighborhoodChoice === '0') {
+      return await handleUSSD(sessionId, phoneNumber, inputs[0]);
+    }
+
+    const region = regionChoice === '1' ? 'Maputo' : 'Matola';
+    const neighborhoods = await getNeighborhoodsByRegion(region);
+    const neighborhoodIndex = parseInt(neighborhoodChoice) - 1;
+    
+    if (neighborhoodIndex < 0 || neighborhoodIndex >= neighborhoods.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const neighborhood = neighborhoods[neighborhoodIndex];
+
+    // Get stops in this neighborhood
+    const stops = await getStopsByNeighborhood(neighborhood, region);
+    
+    // Stops will always have at least one value (neighborhood name as fallback)
+
+    // Option 1: Find transport now
     if (mainChoice === '1') {
-      if (thirdInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
+      let stopMenu = `CON ${neighborhood} - Escolha a paragem:\n`;
+      stops.slice(0, 9).forEach((stop, i) => {
+        stopMenu += `${i + 1}. ${stop}\n`;
+      });
+      stopMenu += `0. Voltar`;
+      return stopMenu;
+    }
+
+    // Option 2: Search routes
+    if (mainChoice === '2') {
+      let stopMenu = `CON ${neighborhood} - Escolha a paragem:\n`;
+      stops.slice(0, 9).forEach((stop, i) => {
+        stopMenu += `${i + 1}. ${stop}\n`;
+      });
+      stopMenu += `0. Voltar`;
+      return stopMenu;
+    }
+
+    // Option 3: Nearest stops
+    if (mainChoice === '3') {
+      let stopMenu = `CON Paragens em ${neighborhood}:\n`;
+      stops.slice(0, 9).forEach((stop, i) => {
+        stopMenu += `${i + 1}. ${stop}\n`;
+      });
+      stopMenu += `0. Voltar`;
+      return stopMenu;
+    }
+
+    // Option 4: Calculate fare - origin stop
+    if (mainChoice === '4') {
+      let stopMenu = `CON ${neighborhood} - Paragem de origem:\n`;
+      stops.slice(0, 9).forEach((stop, i) => {
+        stopMenu += `${i + 1}. ${stop}\n`;
+      });
+      stopMenu += `0. Voltar`;
+      return stopMenu;
+    }
+  }
+
+  // LEVEL 4: Stop selected - Show destinations or info
+  if (level === 4) {
+    const mainChoice = inputs[0];
+    const regionChoice = inputs[1];
+    const neighborhoodChoice = inputs[2];
+    const stopChoice = inputs[3];
+
+    // Handle back
+    if (stopChoice === '0') {
+      return await handleUSSD(sessionId, phoneNumber, `${inputs[0]}*${inputs[1]}`);
+    }
+
+    const region = regionChoice === '1' ? 'Maputo' : 'Matola';
+    const neighborhoods = await getNeighborhoodsByRegion(region);
+    const neighborhoodIndex = parseInt(neighborhoodChoice) - 1;
+    
+    if (neighborhoodIndex < 0 || neighborhoodIndex >= neighborhoods.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const neighborhood = neighborhoods[neighborhoodIndex];
+    const stops = await getStopsByNeighborhood(neighborhood, region);
+    const stopIndex = parseInt(stopChoice) - 1;
+    
+    if (stopIndex < 0 || stopIndex >= stops.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const selectedStop = stops[stopIndex];
+
+    // Option 1: Find transport now - Show destinations
+    if (mainChoice === '1') {
+      const destinations = await getAvailableDestinations(selectedStop);
+      
+      // Always show destinations (fallback to all terminals if needed)
+      const displayDestinations = destinations.length > 0 ? destinations : await getAvailableOrigins();
+      const filteredDestinations = displayDestinations.filter(d => 
+        !d.toLowerCase().includes(selectedStop.toLowerCase())
+      ).slice(0, 9);
+
+      let destMenu = `CON Para onde vai?\n`;
+      filteredDestinations.forEach((dest, i) => {
+        destMenu += `${i + 1}. ${dest}\n`;
+      });
+      destMenu += `0. Voltar`;
+      return destMenu;
+    }
+
+    // Option 2: Search routes - Show routes from this stop
+    if (mainChoice === '2') {
+      const routes = await searchRoutes(selectedStop);
+      
+      // Always show routes (use all routes as fallback)
+      if (routes.length === 0) {
+        const allRoutes = await prisma.via.findMany({
+          select: { nome: true, terminalPartida: true, terminalChegada: true },
+          take: 9
+        });
+        
+        let routeMenu = `CON Rotas disponíveis:\n`;
+        allRoutes.forEach((route, i) => {
+          routeMenu += `${i + 1}. ${route.terminalChegada}\n`;
+        });
+        routeMenu += `0. Voltar`;
+        return routeMenu;
       }
 
-      const locations = await getAvailableLocations();
-      const currentLocation = locations[parseInt(secondChoice) - 1];
-      
-      if (!currentLocation) {
-        return `END Localização inválida.`;
-      }
-      
-      const destinations = await getAvailableDestinations(currentLocation);
+      let routeMenu = `CON Rotas de ${selectedStop}:\n`;
+      routes.slice(0, 9).forEach((route, i) => {
+        routeMenu += `${i + 1}. ${route.destination}\n`;
+      });
+      routeMenu += `0. Voltar`;
+      return routeMenu;
+    }
 
-      const destIndex = parseInt(thirdInput) - 1;
+    // Option 3: Nearest stops - Show stop details
+    if (mainChoice === '3') {
+      const routes = await searchRoutes(selectedStop);
+      const routeNames = routes.map(r => r.name).join(', ') || 'N/A';
+      
+      return `END ${selectedStop}
+
+Rotas: ${routeNames}
+
+Obrigado por usar nosso servico!`;
+    }
+
+    // Option 4: Calculate fare - Now ask for destination region
+    if (mainChoice === '4') {
+      return `CON Calcular Tarifa
+De: ${selectedStop}
+
+Região de destino:
+1. Maputo
+2. Matola
+0. Voltar`;
+    }
+  }
+
+  // LEVEL 5: Handle destination selection or fare calculation
+  if (level === 5) {
+    const mainChoice = inputs[0];
+    const regionChoice = inputs[1];
+    const neighborhoodChoice = inputs[2];
+    const stopChoice = inputs[3];
+    const fifthInput = inputs[4];
+
+    // Handle back
+    if (fifthInput === '0') {
+      return await handleUSSD(sessionId, phoneNumber, `${inputs[0]}*${inputs[1]}*${inputs[2]}`);
+    }
+
+    const region = regionChoice === '1' ? 'Maputo' : 'Matola';
+    const neighborhoods = await getNeighborhoodsByRegion(region);
+    const neighborhoodIndex = parseInt(neighborhoodChoice) - 1;
+    
+    if (neighborhoodIndex < 0 || neighborhoodIndex >= neighborhoods.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const neighborhood = neighborhoods[neighborhoodIndex];
+    const stops = await getStopsByNeighborhood(neighborhood, region);
+    const stopIndex = parseInt(stopChoice) - 1;
+    
+    if (stopIndex < 0 || stopIndex >= stops.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const selectedStop = stops[stopIndex];
+
+    // Option 1: Find transport now - Show transport info
+    if (mainChoice === '1') {
+      const destinations = await getAvailableDestinations(selectedStop);
+      const destIndex = parseInt(fifthInput) - 1;
+      
       if (destIndex < 0 || destIndex >= destinations.length) {
         return `END Opção inválida.`;
       }
-
+      
       const destination = destinations[destIndex];
       
       // Find routes and calculate info
-      const transportInfo = await findTransportInfo(currentLocation, destination);
+      const transportInfo = await findTransportInfo(selectedStop, destination);
       
       if (!transportInfo) {
-        return `END Nenhum transporte encontrado de ${currentLocation} para ${destination}.`;
+        // Fallback: Calculate basic fare info
+        const fareInfo = await calculateFare(selectedStop, destination);
+        
+        return `END INFORMACAO DE TRANSPORTE
+
+De: ${selectedStop}
+Para: ${destination}
+
+Distancia estimada: ${fareInfo.distance} km
+Duracao estimada: ${fareInfo.duration}
+Tarifa estimada: ${fareInfo.fare} MT
+
+${fareInfo.routeCount > 0 ? `Rotas disponiveis: ${fareInfo.routeCount}` : 'Consulte horários no terminal'}
+
+Obrigado por usar nosso servico!`;
       }
 
       // Create mission for tracking and notification
       try {
-        await createMissionForUser(phoneNumber, currentLocation, destination);
+        await createMissionForUser(phoneNumber, selectedStop, destination);
       } catch (error) {
         console.error('Error creating mission:', error);
       }
@@ -368,27 +460,15 @@ PARA: ${transportInfo.to}
 Voce sera notificado via SMS!`;
     }
 
-    // Handle route/stop selection from predefined locations (EXISTING)
+    // Option 2: Search routes - Show route details
     if (mainChoice === '2') {
-      // Handle "0" to go back
-      if (thirdInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
-      }
+      const routes = await searchRoutes(selectedStop);
+      const routeIndex = parseInt(fifthInput) - 1;
       
-      const routeIndex = parseInt(thirdInput) - 1;
-      
-      if (isNaN(routeIndex) || routeIndex < 0) {
+      if (routeIndex < 0 || routeIndex >= routes.length) {
         return `END Opção inválida.`;
       }
-
-      const locations = await getAvailableOrigins();
-      const origin = locations[parseInt(secondChoice) - 1];
-      const routes = await searchRoutes(origin);
-
-      if (routeIndex >= routes.length) {
-        return `END Opção inválida.`;
-      }
-
+      
       const route = routes[routeIndex];
       
       return `END ${route.name}
@@ -402,110 +482,277 @@ Tarifa: ${route.fare || '20-30'} MT
 Obrigado por usar nosso servico!`;
     }
 
-    if (mainChoice === '3') {
-      // Handle "0" to go back
-      if (thirdInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
-      }
+    // Option 4: Calculate fare - Destination region selected, now show neighborhoods
+    if (mainChoice === '4') {
+      const destRegion = fifthInput === '1' ? 'Maputo' : 'Matola';
+      const destNeighborhoods = await getNeighborhoodsByRegion(destRegion);
       
-      const stopIndex = parseInt(thirdInput) - 1;
-      
-      if (isNaN(stopIndex) || stopIndex < 0) {
-        return `END Opção inválida.`;
+      if (destNeighborhoods.length === 0) {
+        // This should never happen as neighborhoods are hardcoded
+        return `END Erro no sistema. Por favor, tente novamente mais tarde.`;
       }
 
-      const areas = await getAvailableAreas();
-      const area = areas[parseInt(secondChoice) - 1];
-      const stops = await searchStops(area);
-
-      if (stopIndex >= stops.length) {
-        return `END Opção inválida.`;
-      }
-
-      const stop = stops[stopIndex];
-      
-      return `END ${stop.name}
-
-${stop.routes ? `Rotas: ${stop.routes}` : 'Sem informacao de rotas'}
-
-Obrigado por usar nosso servico!`;
+      let neighborhoodMenu = `CON ${destRegion} - Bairro de destino:\n`;
+      destNeighborhoods.slice(0, 9).forEach((neighborhood, i) => {
+        neighborhoodMenu += `${i + 1}. ${neighborhood}\n`;
+      });
+      neighborhoodMenu += `0. Voltar`;
+      return neighborhoodMenu;
     }
   }
 
-  // LEVEL 4: Handle route/stop selection
-  if (level === 4) {
+  // LEVEL 6: Calculate fare - Destination neighborhood selected
+  if (level === 6) {
     const mainChoice = inputs[0];
-    const secondChoice = inputs[1];
-    const thirdInput = inputs[2];
-    const selection = inputs[3];
+    const originRegionChoice = inputs[1];
+    const originNeighborhoodChoice = inputs[2];
+    const originStopChoice = inputs[3];
+    const destRegionChoice = inputs[4];
+    const destNeighborhoodChoice = inputs[5];
 
-    // Option 2: Route details
-    if (mainChoice === '2') {
-      // Handle "0" to go back
-      if (selection === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
-      }
-      
-      const routeIndex = parseInt(selection) - 1;
-      
-      if (isNaN(routeIndex) || routeIndex < 0) {
-        return `END Opção inválida.`;
-      }
-
-      const locations = await getAvailableOrigins();
-      const origin = locations[parseInt(secondChoice) - 1];
-      const routes = await searchRoutes(origin);
-
-      if (routeIndex >= routes.length) {
-        return `END Opção inválida.`;
-      }
-
-      const route = routes[routeIndex];
-      
-      return `END ${route.name}
-
-De: ${route.origin}
-Para: ${route.destination}
-
-Horario: ${route.hours || '05:00 - 22:00'}
-Tarifa: ${route.fare || '20-30'} MT
-
-Obrigado por usar nosso servico!`;
+    // Handle back
+    if (destNeighborhoodChoice === '0') {
+      return await handleUSSD(sessionId, phoneNumber, `${inputs[0]}*${inputs[1]}*${inputs[2]}*${inputs[3]}`);
     }
 
-    // Option 3: Stop details
-    if (mainChoice === '3') {
-      // Handle "0" to go back
-      if (selection === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
-      }
-      
-      const stopIndex = parseInt(selection) - 1;
-      
-      if (isNaN(stopIndex) || stopIndex < 0) {
-        return `END Opção inválida.`;
-      }
+    // Get origin stop
+    const originRegion = originRegionChoice === '1' ? 'Maputo' : 'Matola';
+    const originNeighborhoods = await getNeighborhoodsByRegion(originRegion);
+    const originNeighborhoodIndex = parseInt(originNeighborhoodChoice) - 1;
+    
+    if (originNeighborhoodIndex < 0 || originNeighborhoodIndex >= originNeighborhoods.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const originNeighborhood = originNeighborhoods[originNeighborhoodIndex];
+    const originStops = await getStopsByNeighborhood(originNeighborhood, originRegion);
+    const originStopIndex = parseInt(originStopChoice) - 1;
+    
+    if (originStopIndex < 0 || originStopIndex >= originStops.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const originStop = originStops[originStopIndex];
 
-      const areas = await getAvailableAreas();
-      const area = areas[parseInt(secondChoice) - 1];
-      const stops = await searchStops(area);
+    // Get destination neighborhood
+    const destRegion = destRegionChoice === '1' ? 'Maputo' : 'Matola';
+    const destNeighborhoods = await getNeighborhoodsByRegion(destRegion);
+    const destNeighborhoodIndex = parseInt(destNeighborhoodChoice) - 1;
+    
+    if (destNeighborhoodIndex < 0 || destNeighborhoodIndex >= destNeighborhoods.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const destNeighborhood = destNeighborhoods[destNeighborhoodIndex];
 
-      if (stopIndex >= stops.length) {
-        return `END Opção inválida.`;
-      }
+    // Get destination stops
+    const destStops = await getStopsByNeighborhood(destNeighborhood, destRegion);
+    
+    // Stops will always have at least one value (neighborhood name as fallback)
 
-      const stop = stops[stopIndex];
-      
-      return `END ${stop.name}
+    let stopMenu = `CON ${destNeighborhood} - Paragem de destino:\n`;
+    destStops.slice(0, 9).forEach((stop, i) => {
+      stopMenu += `${i + 1}. ${stop}\n`;
+    });
+    stopMenu += `0. Voltar`;
+    return stopMenu;
+  }
 
-${stop.routes ? `Rotas: ${stop.routes}` : 'Sem informacao de rotas'}
+  // LEVEL 7: Calculate fare - Show fare calculation
+  if (level === 7) {
+    const mainChoice = inputs[0];
+    const originRegionChoice = inputs[1];
+    const originNeighborhoodChoice = inputs[2];
+    const originStopChoice = inputs[3];
+    const destRegionChoice = inputs[4];
+    const destNeighborhoodChoice = inputs[5];
+    const destStopChoice = inputs[6];
+
+    // Handle back
+    if (destStopChoice === '0') {
+      return await handleUSSD(sessionId, phoneNumber, `${inputs[0]}*${inputs[1]}*${inputs[2]}*${inputs[3]}*${inputs[4]}`);
+    }
+
+    // Get origin stop
+    const originRegion = originRegionChoice === '1' ? 'Maputo' : 'Matola';
+    const originNeighborhoods = await getNeighborhoodsByRegion(originRegion);
+    const originNeighborhoodIndex = parseInt(originNeighborhoodChoice) - 1;
+    
+    if (originNeighborhoodIndex < 0 || originNeighborhoodIndex >= originNeighborhoods.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const originNeighborhood = originNeighborhoods[originNeighborhoodIndex];
+    const originStops = await getStopsByNeighborhood(originNeighborhood, originRegion);
+    const originStopIndex = parseInt(originStopChoice) - 1;
+    
+    if (originStopIndex < 0 || originStopIndex >= originStops.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const originStop = originStops[originStopIndex];
+
+    // Get destination stop
+    const destRegion = destRegionChoice === '1' ? 'Maputo' : 'Matola';
+    const destNeighborhoods = await getNeighborhoodsByRegion(destRegion);
+    const destNeighborhoodIndex = parseInt(destNeighborhoodChoice) - 1;
+    
+    if (destNeighborhoodIndex < 0 || destNeighborhoodIndex >= destNeighborhoods.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const destNeighborhood = destNeighborhoods[destNeighborhoodIndex];
+    const destStops = await getStopsByNeighborhood(destNeighborhood, destRegion);
+    const destStopIndex = parseInt(destStopChoice) - 1;
+    
+    if (destStopIndex < 0 || destStopIndex >= destStops.length) {
+      return `END Opção inválida.`;
+    }
+    
+    const destStop = destStops[destStopIndex];
+
+    // Calculate fare
+    const fareInfo = await calculateFare(originStop, destStop);
+    
+    return `END CALCULO DE TARIFA
+
+De: ${originStop}
+Para: ${destStop}
+
+Distancia: ${fareInfo.distance} km
+Duracao: ${fareInfo.duration}
+Tarifa: ${fareInfo.fare} MT
+
+${fareInfo.routeCount > 0 ? `Rotas disponiveis: ${fareInfo.routeCount}` : 'Nenhuma rota direta encontrada'}
 
 Obrigado por usar nosso servico!`;
-    }
   }
 
   // Default fallback
   return `END Obrigado por usar o Sistema de Transportes!`;
+}
+
+// NEW: Get neighborhoods by region
+async function getNeighborhoodsByRegion(region: string): Promise<string[]> {
+  try {
+    // Define neighborhoods for each region based on the reference document
+    const neighborhoodMap: { [key: string]: string[] } = {
+      'Maputo': [
+        'Baixa / Central',
+        'Polana / Museu',
+        'Alto Maé',
+        'Xipamanine',
+        'Hulene',
+        'Magoanine',
+        'Zimpeto',
+        'Albazine',
+        'Jardim'
+      ],
+      'Matola': [
+        'Matola Sede',
+        'Machava',
+        'Matola Gare',
+        'Tchumene',
+        'T3',
+        'Fomento',
+        'Liberdade',
+        'Malhampsene'
+      ]
+    };
+
+    return neighborhoodMap[region] || [];
+  } catch (error) {
+    console.error('Error getting neighborhoods:', error);
+    return [];
+  }
+}
+
+// NEW: Get stops by neighborhood
+async function getStopsByNeighborhood(neighborhood: string, region: string): Promise<string[]> {
+  try {
+    // Define neighborhood-to-stop mappings based on actual database content
+    const neighborhoodStopMap: { [key: string]: string[] } = {
+      // Maputo neighborhoods
+      'Baixa / Central': ['Praça dos Trabalhadores', 'Albert Lithule', 'Laurentina'],
+      'Polana / Museu': ['Terminal Museu', 'Polana'],
+      'Alto Maé': ['Praça dos Trabalhadores', 'Albert Lithule'],
+      'Xipamanine': ['Xipamanine'],
+      'Hulene': ['Hulene'],
+      'Magoanine': ['Magoanine'],
+      'Zimpeto': ['Terminal Zimpeto'],
+      'Albazine': ['Albasine'],
+      'Jardim': ['Jardim'],
+      
+      // Matola neighborhoods
+      'Matola Sede': ['Terminal Matola Sede', 'Godinho', 'Paragem da Shoprite'],
+      'Machava': ['Machava Sede', 'Machava Socimol'],
+      'Matola Gare': ['Matola Gare', 'Terminal Matola Gare'],
+      'Tchumene': ['Tchumene'],
+      'T3': ['T3'],
+      'Fomento': ['Fomento'],
+      'Liberdade': ['Liberdade'],
+      'Malhampsene': ['Terminal Malhampsene']
+    };
+
+    // Get search terms for this neighborhood
+    const searchTerms = neighborhoodStopMap[neighborhood] || neighborhood.split('/').map(n => n.trim());
+    
+    // Search for stops matching any of the search terms
+    const stops = await prisma.paragem.findMany({
+      where: {
+        OR: searchTerms.map(term => ({
+          nome: { contains: term, mode: 'insensitive' }
+        }))
+      },
+      select: {
+        nome: true,
+      },
+      orderBy: {
+        nome: 'asc',
+      },
+      take: 20
+    });
+
+    // Extract unique stop names
+    let stopNames = stops.map(s => s.nome);
+    
+    // If no stops found in Paragem table, search terminals from routes
+    if (stopNames.length === 0) {
+      const routes = await prisma.via.findMany({
+        where: {
+          OR: searchTerms.flatMap(term => [
+            { terminalPartida: { contains: term, mode: 'insensitive' } },
+            { terminalChegada: { contains: term, mode: 'insensitive' } }
+          ])
+        },
+        select: {
+          terminalPartida: true,
+          terminalChegada: true,
+        },
+        take: 20
+      });
+
+      const terminals = new Set<string>();
+      routes.forEach(route => {
+        if (route.terminalPartida) terminals.add(route.terminalPartida);
+        if (route.terminalChegada) terminals.add(route.terminalChegada);
+      });
+
+      stopNames = Array.from(terminals).sort();
+    }
+
+    // Always return at least the neighborhood name as a stop
+    if (stopNames.length === 0) {
+      console.log(`⚠️  No stops found for neighborhood: ${neighborhood}, using neighborhood name`);
+      return [neighborhood];
+    }
+
+    return stopNames;
+  } catch (error) {
+    console.error('Error getting stops by neighborhood:', error);
+    // Return neighborhood name as fallback
+    return [neighborhood];
+  }
 }
 
 // NEW: Get available locations from database (terminals and major stops)
@@ -847,41 +1094,34 @@ async function findNearestStop(locationName: string) {
 // NEW: Find transport info (routes, ETA, fare)
 async function findTransportInfo(from: string, to: string) {
   try {
-    // Map common location names to actual terminal names
-    const locationMap: { [key: string]: string[] } = {
-      'Matola Sede': ['Matola Sede', 'Matola', 'Hanhane'],
-      'Baixa': ['Baixa', 'Praça', 'Albert', 'Laurentina'],
-      'Museu': ['Museu'],
-      'Zimpeto': ['Zimpeto'],
-      'Costa do Sol': ['Costa do Sol', 'Praia'],
-      'Portagem': ['Portagem'],
-      'Machava': ['Machava'],
-    };
-
-    // Get search terms
-    const fromTerms = locationMap[from] || [from];
-    const toTerms = locationMap[to] || [to];
+    // Calculate actual distance and fare
+    const distance = await calculateDistanceBetweenStops(from, to);
+    const fare = calculateFareAmount(distance);
+    const travelTime = Math.ceil(distance / 30 * 60); // 30km/h average speed
     
-    // Build OR conditions
-    const fromConditions = fromTerms.flatMap(term => [
-      { terminalPartida: { contains: term } },
-      { nome: { contains: term } }
-    ]);
-    
-    const toConditions = toTerms.flatMap(term => [
-      { terminalChegada: { contains: term } },
-      { nome: { contains: term } }
-    ]);
-
     // Find routes that match origin and destination
     const routes = await prisma.via.findMany({
       where: {
         AND: [
-          { OR: fromConditions },
-          { OR: toConditions }
+          {
+            OR: [
+              { terminalPartida: { contains: from, mode: 'insensitive' } },
+              { terminalChegada: { contains: from, mode: 'insensitive' } }
+            ]
+          },
+          {
+            OR: [
+              { terminalPartida: { contains: to, mode: 'insensitive' } },
+              { terminalChegada: { contains: to, mode: 'insensitive' } }
+            ]
+          }
         ]
       },
-      include: {
+      select: {
+        codigo: true,
+        nome: true,
+        terminalPartida: true,
+        terminalChegada: true,
         transportes: {
           take: 1,
           orderBy: { createdAt: 'desc' },
@@ -901,13 +1141,8 @@ async function findTransportInfo(from: string, to: string) {
     const route = routes[0];
     const bus = route.transportes[0];
     
-    // Calculate distances and times
-    const distanceToYou = calculateDistance(from, to);
-    const travelTime = Math.ceil(distanceToYou / 30 * 60); // Total travel time in minutes
-    
-    // Simulate bus current location (in real system, get from GPS)
-    const busDistanceFromStart = Math.random() * distanceToYou; // km from start
-    const busDistanceToYourStop = distanceToYou - busDistanceFromStart;
+    // Simulate bus current location and ETA
+    const busDistanceToYourStop = distance * Math.random() * 0.5; // Bus is 0-50% away
     const timeUntilBusArrives = Math.ceil(busDistanceToYourStop / 30 * 60); // minutes
     
     // Calculate arrival time
@@ -915,11 +1150,9 @@ async function findTransportInfo(from: string, to: string) {
     const arrivalTime = new Date(now.getTime() + (timeUntilBusArrives + travelTime) * 60000);
     const arrivalTimeStr = `${arrivalTime.getHours().toString().padStart(2, '0')}:${arrivalTime.getMinutes().toString().padStart(2, '0')}`;
     
-    // Get bus current location name (simplified)
-    const busLocation = getBusLocationName(from, to, busDistanceFromStart, distanceToYou);
-    
-    // Calculate fare
-    const fare = calculateFareAmount(distanceToYou);
+    // Get bus current location name (using street-based waypoints)
+    const progress = busDistanceToYourStop / distance;
+    const busLocation = getBusLocationName(from, to, busDistanceToYourStop, distance, route.codigo);
 
     return {
       // Bus info
@@ -935,9 +1168,9 @@ async function findTransportInfo(from: string, to: string) {
       // Route info
       from: route.terminalPartida,
       to: route.terminalChegada,
-      distance: distanceToYou.toFixed(1),
+      distance: distance.toFixed(1),
       
-      // Fare
+      // Fare (based on actual distance)
       fare: fare
     };
   } catch (error) {
@@ -946,71 +1179,370 @@ async function findTransportInfo(from: string, to: string) {
   }
 }
 
-// Helper: Get bus location name based on progress
-function getBusLocationName(from: string, to: string, currentDistance: number, totalDistance: number): string {
+// Route paths with street names and waypoints
+const routePathsWithStreets: { [key: string]: { name: string; waypoints: Array<{ location: string; street: string; coords: string }> } } = {
+  'VIA-1A': {
+    name: 'Rota 1a: Baixa - Chamissava',
+    waypoints: [
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Av. 25 de Setembro', street: 'Av. 25 de Setembro', coords: '-25.9700,32.5720' },
+      { location: 'Av. Julius Nyerere', street: 'Av. Julius Nyerere', coords: '-25.9650,32.5750' },
+      { location: 'Av. Eduardo Mondlane', street: 'Av. Eduardo Mondlane', coords: '-25.9600,32.5650' },
+      { location: 'Av. de Moçambique', street: 'Av. de Moçambique', coords: '-25.9500,32.5500' },
+      { location: 'Chamissava', street: 'Estrada de Chamissava', coords: '-26.0371,32.5186' }
+    ]
+  },
+  'VIA-MAT-BAI': {
+    name: 'Matola Sede - Baixa',
+    waypoints: [
+      { location: 'Terminal Matola Sede', street: 'Av. União Africana', coords: '-25.9794,32.4589' },
+      { location: 'Godinho', street: 'Av. União Africana', coords: '-25.9528,32.4655' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-T3-BAI': {
+    name: 'Rota T3-Baixa',
+    waypoints: [
+      { location: 'T3 (Terminal)', street: 'Estrada Circular', coords: '-25.9083,32.5222' },
+      { location: 'Mussumbuluco', street: 'Estrada Circular', coords: '-25.8894,32.5117' },
+      { location: 'Av. de Moçambique', street: 'Av. de Moçambique', coords: '-25.9300,32.5400' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-POL-BAI': {
+    name: 'Rota Polana-Baixa',
+    waypoints: [
+      { location: 'Polana Cimento', street: 'Av. Julius Nyerere', coords: '-25.9650,32.5850' },
+      { location: 'Av. Eduardo Mondlane', street: 'Av. Eduardo Mondlane', coords: '-25.9680,32.5800' },
+      { location: 'Av. 25 de Setembro', street: 'Av. 25 de Setembro', coords: '-25.9700,32.5720' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-MAG-BAI': {
+    name: 'Rota Magoanine-Baixa',
+    waypoints: [
+      { location: 'Magoanine A', street: 'Estrada Circular', coords: '-25.8752,32.6105' },
+      { location: 'Zimpeto', street: 'Estrada Circular', coords: '-25.8643,32.6186' },
+      { location: 'Av. de Moçambique', street: 'Av. de Moçambique', coords: '-25.9000,32.5800' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-17': {
+    name: 'Rota 17: Baixa - Zimpeto',
+    waypoints: [
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Hulene', street: 'Av. de Moçambique', coords: '-25.9083,32.5939' },
+      { location: 'Magoanine', street: 'Estrada Circular', coords: '-25.8752,32.6105' },
+      { location: 'Terminal Zimpeto', street: 'Estrada do Zimpeto', coords: '-25.8643,32.6186' }
+    ]
+  },
+  'VIA-21': {
+    name: 'Rota 21: Museu - Albasine',
+    waypoints: [
+      { location: 'Terminal Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' },
+      { location: 'Av. Julius Nyerere', street: 'Av. Julius Nyerere', coords: '-25.9600,32.5900' },
+      { location: 'Jardim', street: 'Av. de Moçambique', coords: '-25.9688,32.5714' },
+      { location: 'Zimpeto', street: 'Estrada Circular', coords: '-25.8643,32.6186' },
+      { location: 'Albasine', street: 'Estrada de Albasine', coords: '-25.8373,32.6382' }
+    ]
+  },
+  'VIA-53': {
+    name: 'Rota 53: Baixa - Albasine',
+    waypoints: [
+      { location: 'Laurentina', street: 'Av. 24 de Julho', coords: '-25.9734,32.5694' },
+      { location: 'Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' },
+      { location: 'Jardim', street: 'Av. de Moçambique', coords: '-25.9688,32.5714' },
+      { location: 'Zimpeto', street: 'Estrada Circular', coords: '-25.8643,32.6186' },
+      { location: 'Albasine', street: 'Estrada de Albasine', coords: '-25.8373,32.6382' }
+    ]
+  },
+  'VIA-MACH-MUS': {
+    name: 'Machava Sede - Museu',
+    waypoints: [
+      { location: 'Machava Sede', street: 'Av. das Indústrias', coords: '-25.9125,32.4914' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Av. Eduardo Mondlane', street: 'Av. Eduardo Mondlane', coords: '-25.9600,32.5650' },
+      { location: 'Terminal Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' }
+    ]
+  },
+  'VIA-TCH-BAI': {
+    name: 'Tchumene - Baixa',
+    waypoints: [
+      { location: 'Tchumene', street: 'Estrada Nacional N4', coords: '-25.8856,32.4042' },
+      { location: 'Malhampsene', street: 'Estrada Nacional N4', coords: '-25.8885,32.4336' },
+      { location: 'Matola Gare', street: 'Estrada da Matola', coords: '-25.8271,32.4512' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-MAT-MUS': {
+    name: 'Matola Sede - Museu',
+    waypoints: [
+      { location: 'Terminal Matola Sede', street: 'Av. União Africana', coords: '-25.9794,32.4589' },
+      { location: 'Godinho', street: 'Av. União Africana', coords: '-25.9528,32.4655' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Terminal Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' }
+    ]
+  },
+  'VIA-MAL-MUS': {
+    name: 'Malhampsene - Museu',
+    waypoints: [
+      { location: 'Malhampsene', street: 'Estrada Nacional N4', coords: '-25.8885,32.4336' },
+      { location: 'Matola Gare', street: 'Estrada da Matola', coords: '-25.8271,32.4512' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Terminal Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' }
+    ]
+  },
+  'VIA-MGARE-BAI': {
+    name: 'Matola Gare - Baixa',
+    waypoints: [
+      { location: 'Matola Gare', street: 'Estrada da Matola', coords: '-25.8271,32.4512' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-37': {
+    name: 'Rota 37: Museu - Zimpeto',
+    waypoints: [
+      { location: 'Terminal Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' },
+      { location: 'Av. Julius Nyerere', street: 'Av. Julius Nyerere', coords: '-25.9600,32.5900' },
+      { location: 'Av. de Moçambique', street: 'Av. de Moçambique', coords: '-25.9300,32.5600' },
+      { location: 'Magoanine', street: 'Estrada Circular', coords: '-25.8752,32.6105' },
+      { location: 'Terminal Zimpeto', street: 'Estrada do Zimpeto', coords: '-25.8643,32.6186' }
+    ]
+  },
+  'VIA-39A': {
+    name: 'Rota 39a: Baixa - Zimpeto',
+    waypoints: [
+      { location: 'Albert Lithule', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Hulene', street: 'Av. de Moçambique', coords: '-25.9083,32.5939' },
+      { location: 'Magoanine', street: 'Estrada Circular', coords: '-25.8752,32.6105' },
+      { location: 'Terminal Zimpeto', street: 'Estrada do Zimpeto', coords: '-25.8643,32.6186' }
+    ]
+  },
+  'VIA-39B': {
+    name: 'Rota 39b: Baixa - Boquisso',
+    waypoints: [
+      { location: 'Albert Lithule', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Hulene', street: 'Av. de Moçambique', coords: '-25.9083,32.5939' },
+      { location: 'Magoanine', street: 'Estrada Circular', coords: '-25.8752,32.6105' },
+      { location: 'Boquisso', street: 'Estrada de Boquisso', coords: '-25.8200,32.6500' }
+    ]
+  },
+  'VIA-47': {
+    name: 'Rota 47: Baixa - Tchumene',
+    waypoints: [
+      { location: 'Albert Lithule', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Matola Gare', street: 'Estrada da Matola', coords: '-25.8271,32.4512' },
+      { location: 'Malhampsene', street: 'Estrada Nacional N4', coords: '-25.8885,32.4336' },
+      { location: 'Tchumene', street: 'Estrada Nacional N4', coords: '-25.8856,32.4042' }
+    ]
+  },
+  'VIA-51A': {
+    name: 'Rota 51a: Baixa - Boane',
+    waypoints: [
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Matola Gare', street: 'Estrada da Matola', coords: '-25.8271,32.4512' },
+      { location: 'Boane', street: 'Estrada Nacional N2', coords: '-26.0500,32.3200' }
+    ]
+  },
+  'VIA-51C': {
+    name: 'Rota 51c: Baixa - Mafuiane',
+    waypoints: [
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Matola Gare', street: 'Estrada da Matola', coords: '-25.8271,32.4512' },
+      { location: 'Mafuiane', street: 'Estrada Nacional N2', coords: '-26.1000,32.2800' }
+    ]
+  },
+  'VIA-11': {
+    name: 'Rota 11: Baixa - Michafutene',
+    waypoints: [
+      { location: 'Albert Lithule', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Hulene', street: 'Av. de Moçambique', coords: '-25.9083,32.5939' },
+      { location: 'Michafutene', street: 'Estrada de Michafutene', coords: '-25.8500,32.6800' }
+    ]
+  },
+  'VIA-20': {
+    name: 'Rota 20: Baixa - Matendene',
+    waypoints: [
+      { location: 'Albert Lithule', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Hulene', street: 'Av. de Moçambique', coords: '-25.9083,32.5939' },
+      { location: 'Matendene', street: 'Estrada de Matendene', coords: '-25.8300,32.6600' }
+    ]
+  },
+  'VIA-POL-MAT': {
+    name: 'Rota Polana-Matola',
+    waypoints: [
+      { location: 'Polana Shopping', street: 'Av. Julius Nyerere', coords: '-25.9650,32.5850' },
+      { location: 'Av. Eduardo Mondlane', street: 'Av. Eduardo Mondlane', coords: '-25.9680,32.5800' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Terminal Matola Sede', street: 'Av. União Africana', coords: '-25.9794,32.4589' }
+    ]
+  },
+  'VIA-T3-MUS': {
+    name: 'Rota T3-Museu',
+    waypoints: [
+      { location: 'T3 Mercado', street: 'Estrada Circular', coords: '-25.9083,32.5222' },
+      { location: 'Av. de Moçambique', street: 'Av. de Moçambique', coords: '-25.9300,32.5400' },
+      { location: 'Av. Eduardo Mondlane', street: 'Av. Eduardo Mondlane', coords: '-25.9600,32.5650' },
+      { location: 'Terminal Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' }
+    ]
+  },
+  'VIA-MAG-ZIM': {
+    name: 'Rota Magoanine-Zimpeto',
+    waypoints: [
+      { location: 'Magoanine B', street: 'Estrada Circular', coords: '-25.8752,32.6105' },
+      { location: 'Terminal Zimpeto', street: 'Estrada do Zimpeto', coords: '-25.8643,32.6186' }
+    ]
+  },
+  'VIA-FOM-BAI': {
+    name: 'Rota Fomento-Baixa',
+    waypoints: [
+      { location: 'Fomento (Paragem)', street: 'Av. das Indústrias', coords: '-25.9200,32.4800' },
+      { location: 'Portagem', street: 'Estrada da Matola', coords: '-25.9392,32.5147' },
+      { location: 'Museu', street: 'Av. 24 de Julho', coords: '-25.9723,32.5836' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-SOM-BAI': {
+    name: 'Rota Sommerschield-Baixa',
+    waypoints: [
+      { location: 'Sommerschield', street: 'Av. Julius Nyerere', coords: '-25.9600,32.5900' },
+      { location: 'Av. Eduardo Mondlane', street: 'Av. Eduardo Mondlane', coords: '-25.9680,32.5800' },
+      { location: 'Av. 25 de Setembro', street: 'Av. 25 de Setembro', coords: '-25.9700,32.5720' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-MAX-BAI': {
+    name: 'Rota Maxaquene-Baixa',
+    waypoints: [
+      { location: 'Maxaquene', street: 'Av. de Moçambique', coords: '-25.9500,32.5700' },
+      { location: 'Xipamanine', street: 'Av. de Moçambique', coords: '-25.9442,32.5639' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  },
+  'VIA-AER-BAI': {
+    name: 'Rota Aeroporto-Baixa',
+    waypoints: [
+      { location: 'Aeroporto', street: 'Av. Acordos de Lusaka', coords: '-25.9208,32.5728' },
+      { location: 'Av. Julius Nyerere', street: 'Av. Julius Nyerere', coords: '-25.9600,32.5750' },
+      { location: 'Av. 25 de Setembro', street: 'Av. 25 de Setembro', coords: '-25.9700,32.5720' },
+      { location: 'Praça dos Trabalhadores', street: 'Av. Samora Machel', coords: '-25.9734,32.5694' }
+    ]
+  }
+};
+
+// Helper: Get current street location based on route code and progress
+function getCurrentStreetLocation(routeCode: string, progress: number): { street: string; location: string; coords: string | null; description: string } {
+  const route = routePathsWithStreets[routeCode];
+  if (!route || !route.waypoints || route.waypoints.length === 0) {
+    return { street: 'Em rota', location: 'Desconhecido', coords: null, description: 'Em rota' };
+  }
+  
+  // Calculate which waypoint based on progress (0-1)
+  const index = Math.floor(progress * (route.waypoints.length - 1));
+  const nextIndex = Math.min(index + 1, route.waypoints.length - 1);
+  
+  const currentWaypoint = route.waypoints[index];
+  const nextWaypoint = route.waypoints[nextIndex];
+  
+  // If close to next waypoint, show "próximo de"
+  const localProgress = (progress * (route.waypoints.length - 1)) - index;
+  
+  if (localProgress < 0.3) {
+    return {
+      street: currentWaypoint.street,
+      location: currentWaypoint.location,
+      coords: currentWaypoint.coords,
+      description: `Em ${currentWaypoint.street}`
+    };
+  } else if (localProgress > 0.7 && nextIndex !== index) {
+    return {
+      street: currentWaypoint.street,
+      location: `Próximo de ${nextWaypoint.location}`,
+      coords: currentWaypoint.coords,
+      description: `Em ${currentWaypoint.street}, próximo de ${nextWaypoint.location}`
+    };
+  } else {
+    return {
+      street: currentWaypoint.street,
+      location: `Entre ${currentWaypoint.location} e ${nextWaypoint.location}`,
+      coords: currentWaypoint.coords,
+      description: `Em ${currentWaypoint.street}`
+    };
+  }
+}
+
+// Helper: Get bus location name based on progress (using street-based waypoints)
+function getBusLocationName(from: string, to: string, currentDistance: number, totalDistance: number, routeCode?: string): string {
   const progress = currentDistance / totalDistance;
   
-  // Define intermediate stops based on common routes
+  // If route code provided, use street-based location
+  if (routeCode) {
+    const streetLocation = getCurrentStreetLocation(routeCode, progress);
+    return streetLocation.description;
+  }
+  
+  // Fallback to generic intermediate stops
   const intermediateStops: { [key: string]: string[] } = {
-    'Matola Sede-Baixa': ['Shoprite Matola', 'Portagem', 'Museu'],
-    'Baixa-Matola Sede': ['Museu', 'Portagem', 'Shoprite Matola'],
-    'Matola Sede-Museu': ['Godinho', 'Portagem'],
-    'Museu-Matola Sede': ['Portagem', 'Godinho'],
-    'Baixa-Zimpeto': ['Costa do Sol', 'Praia'],
-    'Zimpeto-Baixa': ['Praia', 'Costa do Sol'],
+    'Matola Sede-Baixa': ['Em Av. União Africana', 'Em Estrada da Matola', 'Em Av. 24 de Julho'],
+    'Baixa-Matola Sede': ['Em Av. 24 de Julho', 'Em Estrada da Matola', 'Em Av. União Africana'],
+    'Matola Sede-Museu': ['Em Av. União Africana', 'Em Estrada da Matola'],
+    'Museu-Matola Sede': ['Em Estrada da Matola', 'Em Av. União Africana'],
+    'Baixa-Zimpeto': ['Em Av. de Moçambique', 'Em Estrada Circular'],
+    'Zimpeto-Baixa': ['Em Estrada Circular', 'Em Av. de Moçambique'],
   };
   
   const key = `${from}-${to}`;
   const stops = intermediateStops[key] || ['Em rota'];
   
-  if (progress < 0.33) return stops[0] || from;
+  if (progress < 0.33) return stops[0] || `Saindo de ${from}`;
   if (progress < 0.66) return stops[1] || stops[0];
-  return stops[2] || stops[1] || 'Proximo';
+  return stops[2] || stops[1] || `Chegando em ${to}`;
 }
 
 
 // NEW: Calculate fare between two locations
 async function calculateFare(origin: string, destination: string) {
   try {
-    // Map common location names to actual terminal names
-    const locationMap: { [key: string]: string[] } = {
-      'Matola': ['Matola', 'Tchumene', 'Malhampsene', 'Machava'],
-      'Baixa': ['Baixa', 'Praça', 'Albert', 'Laurentina'],
-      'Museu': ['Museu'],
-      'Zimpeto': ['Zimpeto'],
-      'Costa do Sol': ['Costa do Sol', 'Praia'],
-      'Portagem': ['Portagem'],
-      'Machava': ['Machava'],
-    };
-
-    // Get search terms
-    const originTerms = locationMap[origin] || [origin];
-    const destTerms = locationMap[destination] || [destination];
-    
-    // Build OR conditions
-    const originConditions = originTerms.flatMap(term => [
-      { terminalPartida: { contains: term } },
-      { nome: { contains: term } }
-    ]);
-    
-    const destConditions = destTerms.flatMap(term => [
-      { terminalChegada: { contains: term } },
-      { nome: { contains: term } }
-    ]);
+    // Calculate actual distance using coordinates
+    const distance = await calculateDistanceBetweenStops(origin, destination);
+    const fare = calculateFareAmount(distance);
+    const duration = Math.ceil(distance / 30 * 60); // 30km/h average speed
 
     // Find routes between origin and destination
     const routes = await prisma.via.findMany({
       where: {
         AND: [
-          { OR: originConditions },
-          { OR: destConditions }
+          {
+            OR: [
+              { terminalPartida: { contains: origin, mode: 'insensitive' } },
+              { terminalChegada: { contains: origin, mode: 'insensitive' } }
+            ]
+          },
+          {
+            OR: [
+              { terminalPartida: { contains: destination, mode: 'insensitive' } },
+              { terminalChegada: { contains: destination, mode: 'insensitive' } }
+            ]
+          }
         ]
       }
     });
-
-    const distance = calculateDistance(origin, destination);
-    const fare = calculateFareAmount(distance);
-    const duration = Math.ceil(distance / 30 * 60); // 30km/h average
 
     return {
       distance: distance.toFixed(1),
@@ -1020,53 +1552,81 @@ async function calculateFare(origin: string, destination: string) {
     };
   } catch (error) {
     console.error('Error calculating fare:', error);
+    // Fallback to default values
     return {
       distance: '10.0',
-      fare: '25',
+      fare: '20',
       duration: '20 min',
       routeCount: 0
     };
   }
 }
 
-// Helper: Calculate distance between two locations (simplified)
-function calculateDistance(from: string, to: string): number {
-  // Simplified distance calculation based on common routes
-  const distances: { [key: string]: number } = {
-    'Matola-Baixa': 12,
-    'Baixa-Matola': 12,
-    'Matola-Museu': 10,
-    'Museu-Matola': 10,
-    'Baixa-Zimpeto': 15,
-    'Zimpeto-Baixa': 15,
-    'Baixa-Costa do Sol': 8,
-    'Costa do Sol-Baixa': 8,
-    'Matola-Zimpeto': 18,
-    'Zimpeto-Matola': 18,
-    'Portagem-Baixa': 8,
-    'Baixa-Portagem': 8,
-    'Machava-Museu': 9,
-    'Museu-Machava': 9
-  };
-
-  const key = `${from}-${to}`;
-  return distances[key] || 10; // Default 10km
+// Helper: Parse geolocation string
+function parseGeoCoords(geoStr: string): { lat: number; lng: number } | null {
+  if (!geoStr) return null;
+  const parts = geoStr.split(',').map(p => parseFloat(p.trim()));
+  if (parts.length !== 2 || parts.some(isNaN)) return null;
+  
+  // Maputo coordinates: lat around -25, lng around 32
+  if (parts[0] < 0 && parts[0] > -30) {
+    return { lat: parts[0], lng: parts[1] };
+  } else {
+    return { lat: parts[1], lng: parts[0] };
+  }
 }
 
-// Helper: Calculate fare based on distance
+// Helper: Calculate distance between two locations (using Haversine formula)
+async function calculateDistanceBetweenStops(origin: string, destination: string): Promise<number> {
+  try {
+    // Get coordinates for both stops
+    const originStop = await prisma.paragem.findFirst({
+      where: { nome: { contains: origin, mode: 'insensitive' } },
+      select: { geoLocation: true }
+    });
+    
+    const destStop = await prisma.paragem.findFirst({
+      where: { nome: { contains: destination, mode: 'insensitive' } },
+      select: { geoLocation: true }
+    });
+    
+    if (!originStop?.geoLocation || !destStop?.geoLocation) {
+      return 10; // Default distance if coordinates not found
+    }
+    
+    const originCoords = parseGeoCoords(originStop.geoLocation);
+    const destCoords = parseGeoCoords(destStop.geoLocation);
+    
+    if (!originCoords || !destCoords) {
+      return 10; // Default if parsing fails
+    }
+    
+    // Haversine formula
+    const R = 6371; // Earth's radius in km
+    const dLat = (destCoords.lat - originCoords.lat) * Math.PI / 180;
+    const dLon = (destCoords.lng - originCoords.lng) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(originCoords.lat * Math.PI / 180) * Math.cos(destCoords.lat * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in km
+  } catch (error) {
+    console.error('Error calculating distance:', error);
+    return 10; // Default distance
+  }
+}
+
+// Helper: Calculate fare based on distance (in km)
 function calculateFareAmount(distance: number): number {
-  // Fare structure:
-  // 0-5km: 15 MT
-  // 5-10km: 20 MT
-  // 10-15km: 25 MT
-  // 15-20km: 30 MT
-  // 20+km: 35 MT
-  
-  if (distance <= 5) return 15;
-  if (distance <= 10) return 20;
-  if (distance <= 15) return 25;
-  if (distance <= 20) return 30;
-  return 35;
+  // Mozambique transport pricing structure based on distance
+  if (distance <= 2) return 10;   // Very short: 10 MT
+  if (distance <= 5) return 15;   // Short: 15 MT
+  if (distance <= 10) return 20;  // Medium: 20 MT
+  if (distance <= 15) return 25;  // Long: 25 MT
+  if (distance <= 20) return 30;  // Very long: 30 MT
+  if (distance <= 30) return 35;  // Extra long: 35 MT
+  return 40;                       // Maximum: 40 MT
 }
 
 // NEW: Create mission for user tracking

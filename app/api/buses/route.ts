@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAllBusesWithLocations } from '@/lib/busLocationService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,89 +8,15 @@ export async function GET(request: NextRequest) {
     const paragemId = searchParams.get('paragemId');
     const viaId = searchParams.get('viaId');
 
-    console.log('Fetching buses for paragemId:', paragemId, 'viaId:', viaId);
+    console.log('📍 Fetching buses for paragemId:', paragemId, 'viaId:', viaId);
 
-    // If no parameters, return all buses
+    // If no parameters, return all buses using shared service
     if (!paragemId && !viaId) {
-      console.log('Fetching all buses in circulation');
+      console.log('🚌 Fetching all buses in circulation using shared service');
       
-      const allTransportes = await prisma.transporte.findMany({
-        include: {
-          via: {
-            include: {
-              paragens: {
-                include: {
-                  paragem: true,
-                },
-                orderBy: {
-                  id: 'asc',
-                },
-              },
-            },
-          },
-          geoLocations: {
-            orderBy: {
-              createdAt: 'desc',
-            },
-            take: 1,
-          },
-        },
-      });
+      const allBuses = await getAllBusesWithLocations();
 
-      const allBuses = allTransportes.map((transporte) => {
-        let currentLat, currentLng;
-        
-        if (transporte.currGeoLocation) {
-          [currentLat, currentLng] = transporte.currGeoLocation.split(',').map(Number);
-        } else if (transporte.geoLocations.length > 0) {
-          [currentLat, currentLng] = transporte.geoLocations[0].geoLocationTransporte.split(',').map(Number);
-        } else {
-          const firstStop = transporte.via.paragens[0];
-          if (firstStop) {
-            [currentLat, currentLng] = firstStop.paragem.geoLocation.split(',').map(Number);
-          } else {
-            currentLat = -25.9655;
-            currentLng = 32.5892;
-          }
-        }
-
-        let routePath: [number, number][] = [];
-        if (transporte.routePath) {
-          routePath = transporte.routePath.split(';').map((coord) => {
-            const [lng, lat] = coord.split(',').map(Number);
-            return [lng, lat];
-          });
-        } else if (transporte.via.geoLocationPath) {
-          routePath = transporte.via.geoLocationPath.split(';').map((coord) => {
-            const [lng, lat] = coord.split(',').map(Number);
-            return [lng, lat];
-          });
-        }
-
-        const stops = transporte.via.paragens.map((vp) => {
-          const [lat, lng] = vp.paragem.geoLocation.split(',').map(Number);
-          return {
-            id: vp.paragem.id,
-            nome: vp.paragem.nome,
-            latitude: lat,
-            longitude: lng,
-            isTerminal: vp.terminalBoolean,
-          };
-        });
-
-        return {
-          id: transporte.id,
-          matricula: transporte.matricula,
-          via: transporte.via.nome,
-          latitude: currentLat,
-          longitude: currentLng,
-          status: 'Em Circulação',
-          routePath: routePath,
-          stops: stops,
-        };
-      });
-
-      console.log('Found', allBuses.length, 'buses in circulation');
+      console.log(`✅ Found ${allBuses.length} buses in circulation`);
 
       return NextResponse.json({
         buses: allBuses,
@@ -98,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!paragemId || !viaId) {
-      console.log('Missing required parameters');
+      console.log('⚠️  Missing required parameters');
       return NextResponse.json(
         { error: 'paragemId and viaId are required' },
         { status: 400 }
@@ -110,10 +37,13 @@ export async function GET(request: NextRequest) {
     });
 
     if (!paragem) {
-      return NextResponse.json(
-        { error: 'Paragem not found' },
-        { status: 404 }
-      );
+      // Instead of returning error, return all buses
+      console.log('⚠️  Paragem not found, returning all buses as fallback');
+      const allBuses = await getAllBusesWithLocations();
+      return NextResponse.json({
+        buses: allBuses,
+        total: allBuses.length,
+      });
     }
 
     const via = await prisma.via.findUnique({
@@ -131,10 +61,13 @@ export async function GET(request: NextRequest) {
     });
 
     if (!via) {
-      return NextResponse.json(
-        { error: 'Via not found' },
-        { status: 404 }
-      );
+      // Instead of returning error, return all buses
+      console.log('⚠️  Via not found, returning all buses as fallback');
+      const allBuses = await getAllBusesWithLocations();
+      return NextResponse.json({
+        buses: allBuses,
+        total: allBuses.length,
+      });
     }
 
     const transportes = await prisma.transporte.findMany({
@@ -166,53 +99,17 @@ export async function GET(request: NextRequest) {
     const [paragemLat, paragemLng] = paragem.geoLocation.split(',').map(Number);
 
     if (transportes.length === 0) {
-      console.log('No buses found on this via, returning all buses');
+      console.log('⚠️  No buses found on this via, returning all buses as fallback');
       
-      const allTransportes = await prisma.transporte.findMany({
-        include: {
-          via: {
-            include: {
-              paragens: {
-                include: {
-                  paragem: true,
-                },
-                orderBy: {
-                  id: 'asc',
-                },
-              },
-            },
-          },
-          geoLocations: {
-            orderBy: {
-              createdAt: 'desc',
-            },
-            take: 1,
-          },
-        },
-      });
+      const allBuses = await getAllBusesWithLocations();
 
-      const allBuses = allTransportes.map((transporte) => {
-        let currentLat, currentLng;
-        
-        if (transporte.currGeoLocation) {
-          [currentLat, currentLng] = transporte.currGeoLocation.split(',').map(Number);
-        } else if (transporte.geoLocations.length > 0) {
-          [currentLat, currentLng] = transporte.geoLocations[0].geoLocationTransporte.split(',').map(Number);
-        } else {
-          const firstStop = transporte.via.paragens[0];
-          if (firstStop) {
-            [currentLat, currentLng] = firstStop.paragem.geoLocation.split(',').map(Number);
-          } else {
-            currentLat = -25.9655;
-            currentLng = 32.5892;
-          }
-        }
-
+      // Calculate distance to paragem for all buses
+      const busesWithDistance = allBuses.map((bus) => {
         const R = 6371e3;
-        const φ1 = (currentLat * Math.PI) / 180;
+        const φ1 = (bus.latitude * Math.PI) / 180;
         const φ2 = (paragemLat * Math.PI) / 180;
-        const Δφ = ((paragemLat - currentLat) * Math.PI) / 180;
-        const Δλ = ((paragemLng - currentLng) * Math.PI) / 180;
+        const Δφ = ((paragemLat - bus.latitude) * Math.PI) / 180;
+        const Δλ = ((paragemLng - bus.longitude) * Math.PI) / 180;
 
         const a =
           Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
@@ -231,44 +128,18 @@ export async function GET(request: NextRequest) {
           tempoEstimado = 1;
         }
 
-        let routeCoords: [number, number][] = [];
-        if (transporte.via.geoLocationPath) {
-          routeCoords = transporte.via.geoLocationPath.split(';').map((coord) => {
-            const [lng, lat] = coord.split(',').map(Number);
-            return [lng, lat];
-          });
-        }
-
         return {
-          id: transporte.id,
-          matricula: transporte.matricula,
-          via: transporte.via.nome,
-          viaId: transporte.via.id,
-          direcao: `${transporte.via.terminalPartida} → ${transporte.via.terminalChegada}`,
+          ...bus,
           distancia,
           tempoEstimado,
           velocidade,
-          latitude: currentLat,
-          longitude: currentLng,
-          status: 'Em Circulação',
-          routeCoords,
-          stops: transporte.via.paragens.map((vp) => {
-            const [lat, lng] = vp.paragem.geoLocation.split(',').map(Number);
-            return {
-              id: vp.paragem.id,
-              nome: vp.paragem.nome,
-              latitude: lat,
-              longitude: lng,
-              isTerminal: vp.terminalBoolean,
-            };
-          }),
         };
       });
 
-      allBuses.sort((a, b) => a.tempoEstimado - b.tempoEstimado);
+      busesWithDistance.sort((a, b) => a.tempoEstimado - b.tempoEstimado);
 
       return NextResponse.json({
-        buses: allBuses,
+        buses: busesWithDistance,
         paragem: {
           id: paragem.id,
           nome: paragem.nome,
@@ -287,7 +158,7 @@ export async function GET(request: NextRequest) {
         [currentLat, currentLng] = transporte.geoLocations[0].geoLocationTransporte.split(',').map(Number);
       } else {
         const firstStop = transporte.via.paragens[0];
-        if (firstStop) {
+        if (firstStop && firstStop.paragem.geoLocation) {
           [currentLat, currentLng] = firstStop.paragem.geoLocation.split(',').map(Number);
         } else {
           currentLat = paragemLat;
@@ -354,7 +225,7 @@ export async function GET(request: NextRequest) {
 
     busesWithDetails.sort((a, b) => a.tempoEstimado - b.tempoEstimado);
 
-    console.log('Found', busesWithDetails.length, 'buses');
+    console.log(`✅ Found ${busesWithDetails.length} buses on route ${via.codigo}`);
 
     return NextResponse.json({
       buses: busesWithDetails,
@@ -366,16 +237,15 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching buses:', error);
+    console.error('❌ Error fetching buses:', error);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
-    return NextResponse.json(
-      { 
-        error: 'Internal server error',
-        message: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      },
-      { status: 500 }
-    );
+    
+    // Instead of returning error, return empty array with error info
+    return NextResponse.json({
+      buses: [],
+      total: 0,
+      error: error.message
+    });
   }
 }

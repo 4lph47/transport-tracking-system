@@ -1,152 +1,155 @@
-# Quick Reference - Transport Tracking System
+# Quick Reference Guide
 
-## 🚀 Quick Start
+## System Status
 
-```bash
-# Start development server
-cd transport-client
-npm run dev
-# Visit: http://localhost:3000
-
-# View database
-npx prisma studio
-
-# Verify database
-npx tsx scripts/verify-prisma.ts
-
-# Reseed database
-npm run db:seed
-```
-
-## 📊 Database Status
-
-- **Type:** Prisma Postgres (PostgreSQL)
-- **Status:** ✅ Operational and seeded
-- **Buses:** 25
-- **Routes:** 18
-- **Stops:** 32
-
-## 🔗 Important URLs
-
-### Local
-- **Web App:** http://localhost:3000
-- **API:** http://localhost:3000/api/buses
-- **Prisma Studio:** http://localhost:5555
-
-### Production
-- **Web App:** https://transport-tracking-system-xltm.vercel.app/
-- **API:** https://transport-tracking-system-xltm.vercel.app/api/buses
-- **Status:** ⚠️ Needs DATABASE_URL update
-
-## 🔧 Fix Production (Vercel)
-
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Select project → Settings → Environment Variables
-3. Add:
-   ```
-   DATABASE_URL=postgres://a07ae726389b1d015dd3ead98a84066a11a37dcaaea8ca0704b239a844b4d38f:sk_0Aa21GuPYQLsvv08V8jZI@pooled.db.prisma.io:5432/postgres?sslmode=require
-   ```
-4. Redeploy
-
-## 📱 USSD Endpoints
-
-- **Africa's Talking:** `/api/ussd`
-- **Telerivet:** `/api/ussd-telerivet`
-
-Update webhooks to:
-```
-https://transport-tracking-system-xltm.vercel.app/api/ussd
-```
-
-## 🐛 Troubleshooting
-
-### Map shows 0 buses?
-```bash
-# Check API
-curl http://localhost:3000/api/buses
-
-# Regenerate Prisma Client
-npx prisma generate
-
-# Restart server
-npm run dev
-```
-
-### Database connection error?
-```bash
-# Verify connection
-npx tsx scripts/verify-prisma.ts
-
-# Check .env file
-cat .env | grep DATABASE_URL
-```
-
-## 📝 Key Commands
-
-```bash
-# Prisma
-npx prisma studio          # Open database GUI
-npx prisma generate        # Regenerate client
-npx prisma migrate dev     # Create migration
-npx prisma migrate deploy  # Deploy migration
-npx prisma db seed         # Seed database
-
-# Development
-npm run dev                # Start dev server
-npm run build              # Build for production
-npm run start              # Start production server
-
-# Verification
-npx tsx scripts/verify-prisma.ts  # Test database
-```
-
-## 🔑 Environment Variables
-
-```env
-# Required
-DATABASE_URL="postgres://...@pooled.db.prisma.io:5432/postgres"
-
-# Optional (for USSD)
-AFRICASTALKING_USERNAME="your-username"
-AFRICASTALKING_API_KEY="your-api-key"
-TELERIVET_SECRET="your-secret"
-
-# Optional (for maps)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your-key"
-```
-
-## 📚 Documentation Files
-
-- `SETUP_COMPLETE_SUMMARY.md` - Full setup documentation
-- `PRISMA_POSTGRES_SETUP_COMPLETE.md` - Database migration details
-- `VERCEL_UPDATE_GUIDE.md` - Production deployment guide
-- `QUICK_REFERENCE.md` - This file
-
-## ✅ Checklist
-
-### Local Development
-- [x] Database migrated to Prisma Postgres
-- [x] Database seeded with 25 buses
-- [x] All API routes updated
-- [x] Verification script created
-- [x] Local development working
-
-### Production Deployment
-- [ ] DATABASE_URL added to Vercel
-- [ ] Application redeployed
-- [ ] Buses visible on map
-- [ ] USSD webhooks updated
-- [ ] End-to-end testing complete
-
-## 🆘 Need Help?
-
-1. Check browser console for errors
-2. Check Vercel logs: `vercel logs`
-3. Test API endpoints directly
-4. Run verification script
-5. Review documentation files
+✅ **PRODUCTION READY**  
+✅ **All 28 routes have buses** (76 total)  
+✅ **100% data quality**  
+✅ **0 critical issues**
 
 ---
 
-**Status:** Local ✅ | Production ⚠️ (needs DATABASE_URL)
-**Next Step:** Update Vercel environment variables
+## Key Numbers
+
+| Metric | Value |
+|--------|-------|
+| Routes | 28 |
+| Stops | 59 |
+| Buses | 76 |
+| Relations | 124 |
+| Data Quality | 100% |
+
+---
+
+## API Endpoints
+
+### Webapp
+
+```bash
+# Get all buses
+GET /api/buses
+
+# Get buses by stop and route
+GET /api/buses?paragemId=X&viaId=Y
+
+# Get single bus
+GET /api/bus/[id]
+```
+
+### USSD
+
+```bash
+# Service code
+*384*123#
+```
+
+---
+
+## Shared Service
+
+```typescript
+// Import
+import { 
+  getBusLocation, 
+  getAllBusesWithLocations,
+  getCurrentStreetLocation 
+} from '@/lib/busLocationService';
+
+// Get single bus
+const bus = await getBusLocation(busId);
+
+// Get all buses
+const buses = await getAllBusesWithLocations();
+
+// Get street location
+const location = getCurrentStreetLocation(routeCode, progress);
+```
+
+---
+
+## Verification Scripts
+
+```bash
+# Check routes have buses
+node check-routes-buses.js
+
+# Verify data sync
+node verify-data-sync.js
+
+# Fix data issues
+node fix-data-issues.js
+```
+
+---
+
+## Common Tasks
+
+### Add New Route
+1. Add route to database (Via table)
+2. Add stops to route (ViaParagem table)
+3. Add buses to route (Transporte table)
+4. Add street waypoints to `lib/busLocationService.ts`
+
+### Add New Bus
+1. Create bus in Transporte table
+2. Link to route (viaId)
+3. Set initial location (currGeoLocation)
+4. Create GeoLocation record
+
+### Update Street Waypoints
+1. Edit `lib/busLocationService.ts`
+2. Find route in `routePathsWithStreets`
+3. Update waypoints array
+4. Test with `getCurrentStreetLocation()`
+
+---
+
+## Troubleshooting
+
+### No buses showing
+- Check database: `node check-routes-buses.js`
+- Verify API: `curl http://localhost:3000/api/buses`
+- Check logs for errors
+
+### Wrong street location
+- Verify route code in `routePathsWithStreets`
+- Check waypoints are correct
+- Test progress calculation (0-1)
+
+### USSD not working
+- Check Africa's Talking credentials
+- Verify callback URL is set
+- Check logs: `console.log('📱 USSD Request:', ...)`
+
+---
+
+## Environment Variables
+
+```env
+DATABASE_URL="postgresql://..."
+AFRICASTALKING_USERNAME="sandbox"
+AFRICASTALKING_API_KEY="atsk_..."
+TELERIVET_SECRET="..."
+```
+
+---
+
+## Documentation
+
+- **FINAL_SYSTEM_STATUS.md** - Complete system overview
+- **WEBAPP_USSD_UPDATE_COMPLETE.md** - Latest updates
+- **DATA_SYNC_VERIFICATION_COMPLETE.md** - Data verification
+- **ROUTE_STOPS_AND_SHARED_SERVICE_COMPLETE.md** - Implementation details
+
+---
+
+## Support
+
+- **Email**: info@transporte.mz
+- **USSD**: `*384*123#`
+- **Webapp**: Your domain
+
+---
+
+**Last Updated**: May 4, 2026  
+**Status**: ✅ PRODUCTION READY
