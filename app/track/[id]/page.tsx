@@ -318,36 +318,30 @@ function TrackTransportContent() {
               </div>
             </div>
           ) : isArriving ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <div className="bg-white border border-neutral-300 rounded-xl p-4 mb-6">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-neutral-900 rounded-full flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-amber-900">Chegando</h2>
-                  <p className="text-sm text-amber-700">O transporte está próximo da sua paragem</p>
+                  <h2 className="text-lg font-semibold text-neutral-900">Chegando</h2>
+                  <p className="text-sm text-neutral-600">O transporte está próximo da sua paragem</p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-neutral-900">Em Trânsito</h2>
-                    <p className="text-sm text-neutral-600">Acompanhando em tempo real</p>
-                  </div>
+            <div className="bg-white border border-neutral-300 rounded-xl p-4 mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-neutral-900 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
                 </div>
-                <div className="flex items-center space-x-2 bg-neutral-100 px-3 py-1.5 rounded-full">
-                  <div className="w-2 h-2 bg-neutral-700 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium text-neutral-700">Ativo</span>
+                <div>
+                  <h2 className="text-lg font-semibold text-neutral-900">Em Trânsito</h2>
+                  <p className="text-sm text-neutral-600">Acompanhando em tempo real</p>
                 </div>
               </div>
             </div>

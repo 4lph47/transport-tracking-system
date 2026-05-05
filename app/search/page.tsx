@@ -556,22 +556,34 @@ function SearchContent() {
                   key={transport.id}
                   className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
                     {/* Transport Info */}
                     <div className="flex-1">
-                      <div className="flex items-start space-x-4 mb-4">
-                        <div className="bg-slate-100 rounded-xl p-3">
-                          <svg className="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-slate-100 rounded-xl p-3">
+                            <svg className="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-1">
+                              {transport.matricula}
+                            </h3>
+                            <p className="text-slate-600 font-medium">{transport.via}</p>
+                            <p className="text-sm text-slate-500">{transport.direcao}</p>
+                          </div>
+                        </div>
+                        {/* Acompanhar button - moved to top right */}
+                        <button
+                          onClick={() => handleTrackTransport(transport.id)}
+                          className="bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 flex items-center space-x-2 whitespace-nowrap"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           </svg>
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-slate-900 mb-1">
-                            {transport.matricula}
-                          </h3>
-                          <p className="text-slate-600 font-medium">{transport.via}</p>
-                          <p className="text-sm text-slate-500">{transport.direcao}</p>
-                        </div>
+                          <span>Acompanhar</span>
+                        </button>
                       </div>
 
                       {/* Metrics - Updated with all information */}
@@ -722,23 +734,6 @@ function SearchContent() {
                             </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-
-                    {/* Action Button */}
-                    <div className="lg:w-48">
-                      <button
-                        onClick={() => handleTrackTransport(transport.id)}
-                        className="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-4 px-6 rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        </svg>
-                        <span>Acompanhar</span>
-                      </button>
-                      <div className="mt-2 flex items-center justify-center space-x-1">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-slate-600">Em circulação</span>
                       </div>
                     </div>
                   </div>
