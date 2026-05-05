@@ -1087,88 +1087,215 @@ async function findNearestStop(locationName: string) {
   }
 }
 
-// NEW: Find transport info (routes, ETA, fare)
+// NEW: Find transport info (routes, ETA, fare) - UPDATED to match web API logic
 async function findTransportInfo(from: string, to: string) {
   try {
-    // Calculate actual distance and fare
-    const distance = await calculateDistanceBetweenStops(from, to);
-    const fare = calculateFareAmount(distance);
-    const travelTime = Math.ceil(distance / 30 * 60); // 30km/h average speed
-    
-    // Find routes that match origin and destination
-    const routes = await prisma.via.findMany({
+    console.log(`\n🔍 USSD: Finding transport from "${from}" to "${to}"`);
+
+    // Find origem paragem
+    const origemParagem = await prisma.paragem.findFirst({
       where: {
-        AND: [
-          {
-            OR: [
-              { terminalPartida: { contains: from, mode: 'insensitive' } },
-              { terminalChegada: { contains: from, mode: 'insensitive' } }
-            ]
-          },
-          {
-            OR: [
-              { terminalPartida: { contains: to, mode: 'insensitive' } },
-              { terminalChegada: { contains: to, mode: 'insensitive' } }
-            ]
-          }
-        ]
-      },
-      select: {
-        codigo: true,
-        nome: true,
-        terminalPartida: true,
-        terminalChegada: true,
-        transportes: {
-          take: 1,
-          orderBy: { createdAt: 'desc' },
-          include: {
-            geoLocations: {
-              take: 1,
-              orderBy: { createdAt: 'desc' }
-            }
-          }
+        nome: {
+          contains: from,
+          mode: 'insensitive'
         }
-      },
-      take: 1
+      }
     });
 
-    if (routes.length === 0) return null;
+    if (!origemParagem) {
+      console.log(`❌ Origem paragem not found: ${from}`);
+      return null;
+    }
 
-    const route = routes[0];
-    const bus = route.transportes[0];
-    
-    // Simulate bus current location and ETA
-    const busDistanceToYourStop = distance * Math.random() * 0.5; // Bus is 0-50% away
-    const timeUntilBusArrives = Math.ceil(busDistanceToYourStop / 30 * 60); // minutes
-    
-    // Calculate arrival time
-    const now = new Date();
-    const arrivalTime = new Date(now.getTime() + (timeUntilBusArrives + travelTime) * 60000);
-    const arrivalTimeStr = `${arrivalTime.getHours().toString().padStart(2, '0')}:${arrivalTime.getMinutes().toString().padStart(2, '0')}`;
-    
-    // Get bus current location name (using street-based waypoints)
-    const progress = busDistanceToYourStop / distance;
-    const busLocation = getBusLocationName(from, to, busDistanceToYourStop, distance, route.codigo);
+    // Find destino paragem
+    const destinoParagem = await prisma.paragem.findFirst({
+      where: {
+        nome: {
+          contains: to,
+          mode: 'insensitive'
+        }
+      }
+    });
 
-    return {
-      // Bus info
-      busId: bus ? `${bus.marca} ${bus.modelo} - ${bus.matricula}` : 'N/A',
-      busLocation: busLocation,
+    if (!destinoParagem) {
+      console.log(`❌ Destino paragem not found: ${to}`);
+      return null;
+    }
+
+    console.log(`✅ Found origem: ${origemParagem.nome}`);
+    console.log(`✅ Found destino: ${destinoParagem.nome}`);
+
+    // Find all transportes that pass through BOTH stops in correct order
+    const allTransportes = await prisma.transporte.findMany({
+      include: {
+        via: {
+          include: {
+            paragens: {
+              include: {
+                paragem: true,
+              },
+              orderBy: {
+                id: 'asc',
+              },
+            },
+          },
+        },
+        geoLocations: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
+      },
+    });
+
+    console.log(`📊 Checking ${allTransportes.length} transportes`);
+
+    // Helper function to calculate distance
+    const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+      const R = 6371e3;
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+      const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+
+      const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       
-      // Timing
-      timeUntilBusArrives: timeUntilBusArrives,
-      travelTime: travelTime,
-      totalTime: timeUntilBusArrives + travelTime,
-      arrivalTime: arrivalTimeStr,
-      
-      // Route info
-      from: route.terminalPartida,
-      to: route.terminalChegada,
-      distance: distance.toFixed(1),
-      
-      // Fare (based on actual distance)
-      fare: fare
+      return R * c;
     };
+
+    const [origemLat, origemLng] = origemParagem.geoLocation.split(',').map(Number);
+    const [destinoLat, destinoLng] = destinoParagem.geoLocation.split(',').map(Number);
+
+    // Filter and calculate for each transport
+    let bestTransport = null;
+    let minTimeToOrigem = Infinity;
+
+    for (const transporte of allTransportes) {
+      // Find origem and destino indices in bus route
+      const origemIndex = transporte.via.paragens.findIndex((vp) => vp.paragem.id === origemParagem.id);
+      const destinoIndex = transporte.via.paragens.findIndex((vp) => vp.paragem.id === destinoParagem.id);
+
+      // Bus must pass through both stops
+      if (origemIndex === -1 || destinoIndex === -1) {
+        continue;
+      }
+
+      // Origem must come BEFORE destino
+      if (origemIndex >= destinoIndex) {
+        continue;
+      }
+
+      console.log(`✅ ${transporte.matricula}: Passes through origem (${origemIndex + 1}) → destino (${destinoIndex + 1})`);
+
+      // Get current bus position
+      let currentLat, currentLng;
+      
+      if (transporte.currGeoLocation) {
+        [currentLat, currentLng] = transporte.currGeoLocation.split(',').map(Number);
+      } else if (transporte.geoLocations.length > 0) {
+        [currentLat, currentLng] = transporte.geoLocations[0].geoLocationTransporte.split(',').map(Number);
+      } else {
+        const firstStop = transporte.via.paragens[0];
+        if (firstStop) {
+          [currentLat, currentLng] = firstStop.paragem.geoLocation.split(',').map(Number);
+        } else {
+          continue;
+        }
+      }
+
+      // Find closest stop to current bus position
+      let closestStopIndex = 0;
+      let minDistance = Infinity;
+
+      transporte.via.paragens.forEach((vp, index) => {
+        const [stopLat, stopLng] = vp.paragem.geoLocation.split(',').map(Number);
+        const dist = calculateDistance(currentLat, currentLng, stopLat, stopLng);
+        
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestStopIndex = index;
+        }
+      });
+
+      // Check if bus already passed origem
+      if (closestStopIndex > origemIndex) {
+        console.log(`   ⏭️  Already passed origem`);
+        continue;
+      }
+
+      // Calculate distance from bus to origem
+      let distanciaAteOrigem = 0;
+      
+      if (closestStopIndex === origemIndex) {
+        distanciaAteOrigem = calculateDistance(currentLat, currentLng, origemLat, origemLng);
+      } else {
+        distanciaAteOrigem = minDistance;
+        
+        for (let i = closestStopIndex; i < origemIndex; i++) {
+          const [lat1, lng1] = transporte.via.paragens[i].paragem.geoLocation.split(',').map(Number);
+          const [lat2, lng2] = transporte.via.paragens[i + 1].paragem.geoLocation.split(',').map(Number);
+          distanciaAteOrigem += calculateDistance(lat1, lng1, lat2, lng2);
+        }
+      }
+
+      const tempoChegada = Math.max(1, Math.ceil(distanciaAteOrigem / 1000 / 45 * 60)); // 45 km/h
+
+      // Calculate user's journey distance (origem → destino)
+      let distanciaViagem = 0;
+      
+      for (let i = origemIndex; i < destinoIndex; i++) {
+        const [lat1, lng1] = transporte.via.paragens[i].paragem.geoLocation.split(',').map(Number);
+        const [lat2, lng2] = transporte.via.paragens[i + 1].paragem.geoLocation.split(',').map(Number);
+        distanciaViagem += calculateDistance(lat1, lng1, lat2, lng2);
+      }
+
+      const tempoViagem = Math.ceil(distanciaViagem / 1000 / 30 * 60); // 30 km/h
+      const distanciaViagemKm = distanciaViagem / 1000;
+      const fare = Math.max(10, Math.ceil(distanciaViagemKm * 10)); // 10 MT per km
+
+      // Keep the bus with shortest time to origem
+      if (tempoChegada < minTimeToOrigem) {
+        minTimeToOrigem = tempoChegada;
+
+        // Calculate arrival time
+        const now = new Date();
+        const arrivalTime = new Date(now.getTime() + (tempoChegada + tempoViagem) * 60000);
+        const arrivalTimeStr = `${arrivalTime.getHours().toString().padStart(2, '0')}:${arrivalTime.getMinutes().toString().padStart(2, '0')}`;
+
+        // Get bus location name
+        const busLocation = transporte.via.paragens[closestStopIndex]?.paragem.nome || 'Em rota';
+
+        bestTransport = {
+          busId: `${transporte.marca} ${transporte.modelo} - ${transporte.matricula}`,
+          busLocation: busLocation,
+          timeUntilBusArrives: tempoChegada,
+          travelTime: tempoViagem,
+          totalTime: tempoChegada + tempoViagem,
+          arrivalTime: arrivalTimeStr,
+          from: origemParagem.nome,
+          to: destinoParagem.nome,
+          distance: distanciaViagemKm.toFixed(1),
+          fare: fare
+        };
+
+        console.log(`   ⏱️  Tempo chegada: ${tempoChegada} min`);
+        console.log(`   🚶 Distância viagem: ${distanciaViagemKm.toFixed(1)} km`);
+        console.log(`   💰 Preço: ${fare} MT`);
+      }
+    }
+
+    if (!bestTransport) {
+      console.log(`❌ No valid transport found`);
+      return null;
+    }
+
+    console.log(`\n✅ Best transport found with ${bestTransport.timeUntilBusArrives} min ETA\n`);
+    return bestTransport;
+
   } catch (error) {
     console.error('Error finding transport info:', error);
     return null;
