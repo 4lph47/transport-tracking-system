@@ -37,7 +37,6 @@ export default function LandingPage() {
 
   useEffect(() => {
     let isMounted = true;
-    let pollInterval: NodeJS.Timeout | null = null;
 
     // Initialize simulation on startup
     fetch('/api/startup')
@@ -51,32 +50,24 @@ export default function LandingPage() {
         console.error('Error initializing simulation:', error);
       });
 
-    // Fetch all buses from API
-    const fetchBuses = () => {
-      fetch('/api/buses')
-        .then((res) => res.json())
-        .then((data) => {
-          if (isMounted) {
-            console.log('Fetched buses:', data);
-            if (data.buses) {
-              setBuses(data.buses);
-            }
-            setLoading(false);
+    // Fetch all buses from API (ONCE on load)
+    fetch('/api/buses')
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted) {
+          console.log('Fetched buses:', data);
+          if (data.buses) {
+            setBuses(data.buses);
           }
-        })
-        .catch((error) => {
-          if (isMounted) {
-            console.error('Error fetching buses:', error);
-            setLoading(false);
-          }
-        });
-    };
-
-    // Initial fetch
-    fetchBuses();
-
-    // Poll for updates every 10 seconds for real-time tracking
-    pollInterval = setInterval(fetchBuses, 10000);
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          console.error('Error fetching buses:', error);
+          setLoading(false);
+        }
+      });
 
     // Get user's current location
     if (navigator.geolocation) {
@@ -104,13 +95,9 @@ export default function LandingPage() {
       }
     }
 
-    // Cleanup - stop polling when component unmounts
+    // Cleanup
     return () => {
       isMounted = false;
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        console.log('Stopped polling for bus updates');
-      }
     };
   }, []);
 
