@@ -370,7 +370,7 @@ export async function getBusLocation(busId: string) {
       return null;
     }
 
-    // Get current coordinates
+    // Get current coordinates from database (updated by simulation)
     let currentLat, currentLng;
     
     if (bus.currGeoLocation) {
@@ -387,12 +387,35 @@ export async function getBusLocation(busId: string) {
       }
     }
 
-    // Use deterministic progress based on bus ID (not random!)
-    // This ensures buses stay in consistent positions
-    const busIdHash = bus.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const progress = (busIdHash % 100) / 100; // Deterministic value between 0-1
+    // Get route coords for progress calculation
+    const routeCoords = bus.via.geoLocationPath
+      ? bus.via.geoLocationPath.split(';').map((coord) => {
+          const [lng, lat] = coord.split(',').map(Number);
+          return [lng, lat] as [number, number];
+        })
+      : [];
 
-    // Get street location
+    // Calculate progress based on actual position
+    let progress = 0;
+    if (routeCoords.length > 1) {
+      // Find closest point on route to current position
+      let minDistance = Infinity;
+      let closestIndex = 0;
+      
+      routeCoords.forEach(([lng, lat], index) => {
+        const distance = Math.sqrt(
+          Math.pow(lat - currentLat, 2) + Math.pow(lng - currentLng, 2)
+        );
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = index;
+        }
+      });
+      
+      progress = closestIndex / (routeCoords.length - 1);
+    }
+
+    // Get street location based on actual progress
     const streetLocation = getCurrentStreetLocation(bus.via.codigo, progress);
 
     // Get stops
@@ -407,13 +430,8 @@ export async function getBusLocation(busId: string) {
       };
     });
 
-    // Get route coords (limit to 50 points to reduce memory)
-    const routeCoords = bus.via.geoLocationPath
-      ? bus.via.geoLocationPath.split(';').slice(0, 50).map((coord) => {
-          const [lng, lat] = coord.split(',').map(Number);
-          return [lng, lat] as [number, number];
-        })
-      : [];
+    // Limit route coords for display (reduce memory)
+    const displayRouteCoords = routeCoords.slice(0, 50);
 
     return {
       id: bus.id,
@@ -428,7 +446,7 @@ export async function getBusLocation(busId: string) {
       streetName: streetLocation.street,
       nearLocation: streetLocation.location,
       status: 'Em Circulação',
-      routeCoords,
+      routeCoords: displayRouteCoords,
       stops
     };
   } catch (error) {
@@ -490,14 +508,28 @@ export async function getAllBusesWithLocations() {
 
     // Process buses without additional queries
     const busesWithLocations = buses.map((bus) => {
-      // Get current coordinates
+      // Get route coords for display
+      const routeCoords = bus.via.geoLocationPath
+        ? bus.via.geoLocationPath.split(';').map((coord) => {
+            const [lng, lat] = coord.split(',').map(Number);
+            return [lng, lat] as [number, number];
+          })
+        : [];
+
+      // Get ACTUAL current coordinates from database (updated by simulation)
       let currentLat, currentLng;
       
       if (bus.currGeoLocation) {
+        // Use the actual location from database (simulation updates this)
         [currentLat, currentLng] = bus.currGeoLocation.split(',').map(Number);
       } else if (bus.geoLocations.length > 0) {
+        // Fallback to latest geoLocation
         [currentLat, currentLng] = bus.geoLocations[0].geoLocationTransporte.split(',').map(Number);
+      } else if (routeCoords.length > 0) {
+        // Fallback to start of route
+        [currentLng, currentLat] = routeCoords[0];
       } else {
+        // Last resort: use first stop
         const firstStop = bus.via.paragens[0];
         if (firstStop && firstStop.paragem.geoLocation) {
           [currentLat, currentLng] = firstStop.paragem.geoLocation.split(',').map(Number);
@@ -507,12 +539,27 @@ export async function getAllBusesWithLocations() {
         }
       }
 
-      // Use deterministic progress based on bus ID (not random!)
-      // This ensures buses stay in consistent positions
-      const busIdHash = bus.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const progress = (busIdHash % 100) / 100; // Deterministic value between 0-1
+      // Calculate progress based on actual position (for street location display)
+      let progress = 0;
+      if (routeCoords.length > 1) {
+        // Find closest point on route to current position
+        let minDistance = Infinity;
+        let closestIndex = 0;
+        
+        routeCoords.forEach(([lng, lat], index) => {
+          const distance = Math.sqrt(
+            Math.pow(lat - currentLat, 2) + Math.pow(lng - currentLng, 2)
+          );
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestIndex = index;
+          }
+        });
+        
+        progress = closestIndex / (routeCoords.length - 1);
+      }
 
-      // Get street location
+      // Get street location based on actual progress
       const streetLocation = getCurrentStreetLocation(bus.via.codigo, progress);
 
       // Get stops
@@ -527,13 +574,8 @@ export async function getAllBusesWithLocations() {
         };
       });
 
-      // Get route coords (limit to reduce memory)
-      const routeCoords = bus.via.geoLocationPath
-        ? bus.via.geoLocationPath.split(';').slice(0, 50).map((coord) => {
-            const [lng, lat] = coord.split(',').map(Number);
-            return [lng, lat] as [number, number];
-          })
-        : [];
+      // Limit route coords for display (reduce memory)
+      const displayRouteCoords = routeCoords.slice(0, 50);
 
       return {
         id: bus.id,
@@ -548,7 +590,8 @@ export async function getAllBusesWithLocations() {
         streetName: streetLocation.street,
         nearLocation: streetLocation.location,
         status: 'Em Circulação',
-        routeCoords,
+        routeCoords: displayRouteCoords,
+        routePath: displayRouteCoords, // Add routePath for main page compatibility
         stops
       };
     });
