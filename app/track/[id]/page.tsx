@@ -29,6 +29,7 @@ function TrackTransportContent() {
   const searchParams = useSearchParams();
   const transportId = params.id as string;
   const paragemId = searchParams.get('paragem');
+  const destinationId = searchParams.get('destination');
 
   const [transport, setTransport] = useState<Transport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,11 +44,24 @@ function TrackTransportContent() {
   const [paragemLat, setParagemLat] = useState(-25.9592);
   const [paragemLng, setParagemLng] = useState(32.5832);
   const [paragemNome, setParagemNome] = useState("Sua Paragem");
+  
+  // Destination coordinates
+  const [destinationLat, setDestinationLat] = useState<number | null>(null);
+  const [destinationLng, setDestinationLng] = useState<number | null>(null);
+  const [destinationNome, setDestinationNome] = useState<string | null>(null);
 
   // Simular atualização em tempo real
   useEffect(() => {
     // Carregar dados iniciais
-    fetch(`/api/bus/${transportId}`)
+    let apiUrl = `/api/bus/${transportId}`;
+    if (paragemId) {
+      apiUrl += `?paragem=${paragemId}`;
+      if (destinationId) {
+        apiUrl += `&destination=${destinationId}`;
+      }
+    }
+    
+    fetch(apiUrl)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
@@ -67,6 +81,13 @@ function TrackTransportContent() {
           latitude: data.latitude,
           longitude: data.longitude,
           status: data.status,
+          // Add new fields if available
+          journeyTime: data.journeyTime || 3,
+          journeyDistance: data.journeyDistance || 2000,
+          totalTime: data.totalTime || 8,
+          fare: data.fare || 15,
+          fullRoute: data.fullRoute,
+          userJourney: data.userJourney,
         };
 
         setTransport(mockTransport);
@@ -97,6 +118,17 @@ function TrackTransportContent() {
           setParagemLat(lastStop.latitude);
           setParagemLng(lastStop.longitude);
           setParagemNome(lastStop.nome);
+        }
+
+        // Set destination if provided
+        if (destinationId && data.stops && data.stops.length > 0) {
+          const destStop = data.stops.find((stop: any) => stop.id === destinationId);
+          if (destStop) {
+            console.log('Using user selected destination:', destStop.nome);
+            setDestinationLat(destStop.latitude);
+            setDestinationLng(destStop.longitude);
+            setDestinationNome(destStop.nome);
+          }
         }
 
         setLoading(false);
@@ -405,10 +437,10 @@ function TrackTransportContent() {
             </div>
 
             <div className="p-6">
-              {/* Metrics Grid */}
-              <div className="flex flex-wrap gap-4 mb-6">
+              {/* Metrics Grid - Updated with all information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {/* Tempo Estimado */}
-                <div className="flex-1 min-w-[200px] bg-neutral-50 rounded-xl p-5 border border-neutral-200">
+                <div className="bg-neutral-50 rounded-xl p-5 border border-neutral-200">
                   <div className="flex items-center space-x-2 mb-3">
                     <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -422,11 +454,10 @@ function TrackTransportContent() {
                 </div>
 
                 {/* Distância */}
-                <div className="flex-1 min-w-[200px] bg-neutral-50 rounded-xl p-5 border border-neutral-200">
+                <div className="bg-neutral-50 rounded-xl p-5 border border-neutral-200">
                   <div className="flex items-center space-x-2 mb-3">
                     <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Distância</p>
                   </div>
@@ -436,12 +467,12 @@ function TrackTransportContent() {
                       : transport.distancia}
                   </p>
                   <p className="text-sm text-neutral-500 mt-1">
-                    {transport.distancia > 1000 ? "quilómetros" : "metros"}
+                    {transport.distancia > 1000 ? "km" : "metros"}
                   </p>
                 </div>
 
                 {/* Velocidade */}
-                <div className="flex-1 min-w-[200px] bg-neutral-50 rounded-xl p-5 border border-neutral-200">
+                <div className="bg-neutral-50 rounded-xl p-5 border border-neutral-200">
                   <div className="flex items-center space-x-2 mb-3">
                     <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -451,6 +482,135 @@ function TrackTransportContent() {
                   <p className="text-3xl font-bold text-neutral-900">{transport.velocidade}</p>
                   <p className="text-sm text-neutral-500 mt-1">km/h</p>
                 </div>
+
+                {/* Preço da viagem */}
+                {transport.fare && (
+                  <div className="bg-green-50 rounded-xl p-5 border border-green-200">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                      <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Preço</p>
+                    </div>
+                    <p className="text-3xl font-bold text-green-700">{transport.fare}</p>
+                    <p className="text-sm text-green-600 mt-1">MT</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Journey Information - Always show */}
+              <div className="mb-6 p-5 bg-blue-50 rounded-xl border border-blue-200">
+                <h4 className="text-sm font-semibold text-blue-900 mb-4 flex items-center">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Informações Detalhadas da Viagem
+                </h4>
+                
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Tempo até o autocarro chegar */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-700 mb-1">
+                      {hasDeparted ? "-" : hasArrived ? "0" : transport.tempoEstimado}
+                    </div>
+                    <div className="text-xs text-blue-600 font-medium">
+                      ⏱️ Tempo até o autocarro
+                    </div>
+                    <div className="text-xs text-blue-500">minutos</div>
+                  </div>
+
+                  {/* Tempo até ao destino - only if destination selected */}
+                  {transport.journeyTime && (
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-700 mb-1">
+                        {transport.journeyTime}
+                      </div>
+                      <div className="text-xs text-blue-600 font-medium">
+                        🚶 Tempo de viagem
+                      </div>
+                      <div className="text-xs text-blue-500">minutos</div>
+                    </div>
+                  )}
+
+                  {/* Distância do autocarro */}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-700 mb-1">
+                      {transport.distancia > 1000
+                        ? `${(transport.distancia / 1000).toFixed(1)}`
+                        : transport.distancia}
+                    </div>
+                    <div className="text-xs text-blue-600 font-medium">
+                      📏 Distância autocarro
+                    </div>
+                    <div className="text-xs text-blue-500">
+                      {transport.distancia > 1000 ? "km" : "metros"}
+                    </div>
+                  </div>
+
+                  {/* Tempo total - only if destination selected */}
+                  {transport.totalTime && (
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-700 mb-1">
+                        {transport.totalTime}
+                      </div>
+                      <div className="text-xs text-blue-600 font-medium">
+                        ⏰ Tempo total
+                      </div>
+                      <div className="text-xs text-blue-500">minutos</div>
+                    </div>
+                  )}
+
+                  {/* Preço - only if destination selected */}
+                  {transport.fare && (
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-700 mb-1">
+                        {transport.fare}
+                      </div>
+                      <div className="text-xs text-blue-600 font-medium">
+                        💰 Preço viagem
+                      </div>
+                      <div className="text-xs text-blue-500">MT</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Journey distance if available */}
+                {transport.journeyDistance && (
+                  <div className="mt-4 pt-4 border-t border-blue-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-blue-600 font-medium">
+                        📍 Distância da sua viagem:
+                      </span>
+                      <span className="text-sm text-blue-900 font-bold">
+                        {transport.journeyDistance > 1000
+                          ? `${(transport.journeyDistance / 1000).toFixed(1)} km`
+                          : `${transport.journeyDistance} m`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* User journey info if available */}
+                {transport.userJourney && (
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    <div className="text-center">
+                      <span className="text-sm text-blue-600 font-medium">
+                        🎯 Sua viagem: {transport.userJourney.from} → {transport.userJourney.to}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hint if no destination selected */}
+                {!transport.journeyTime && (
+                  <div className="mt-4 pt-4 border-t border-blue-200">
+                    <div className="text-center">
+                      <span className="text-xs text-blue-600">
+                        💡 Para ver preço e tempo de viagem, selecione um destino na pesquisa
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Mapa */}
@@ -473,6 +633,10 @@ function TrackTransportContent() {
                     routeCoords={routeCoords}
                     stops={stops}
                     paragemNome={paragemNome}
+                    destinationLat={destinationLat || undefined}
+                    destinationLng={destinationLng || undefined}
+                    destinationNome={destinationNome || undefined}
+                    userJourney={transport.userJourney}
                   />
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getNeighborhoodsByRegion, getStopsByNeighborhood } from '@/lib/neighborhoodService';
 
 // Africa's Talking USSD format
 interface USSDRequest {
@@ -632,122 +633,8 @@ Obrigado por usar nosso servico!`;
   return `END Obrigado por usar o Sistema de Transportes!`;
 }
 
-// NEW: Get neighborhoods by region
-async function getNeighborhoodsByRegion(region: string): Promise<string[]> {
-  try {
-    // Define neighborhoods for each region based on the reference document
-    const neighborhoodMap: { [key: string]: string[] } = {
-      'Maputo': [
-        'Baixa / Central',
-        'Polana / Museu',
-        'Alto Maé',
-        'Xipamanine',
-        'Hulene',
-        'Magoanine',
-        'Zimpeto',
-        'Albazine',
-        'Jardim'
-      ],
-      'Matola': [
-        'Matola Sede',
-        'Machava',
-        'Matola Gare',
-        'Tchumene',
-        'T3',
-        'Fomento',
-        'Liberdade',
-        'Malhampsene'
-      ]
-    };
-
-    return neighborhoodMap[region] || [];
-  } catch (error) {
-    console.error('Error getting neighborhoods:', error);
-    return [];
-  }
-}
-
-// NEW: Get stops by neighborhood
-async function getStopsByNeighborhood(neighborhood: string, region: string): Promise<string[]> {
-  try {
-    // Define neighborhood-to-stop mappings based on actual database content
-    const neighborhoodStopMap: { [key: string]: string[] } = {
-      // Maputo neighborhoods
-      'Baixa / Central': ['Praça dos Trabalhadores', 'Albert Lithule', 'Laurentina'],
-      'Polana / Museu': ['Terminal Museu', 'Polana'],
-      'Alto Maé': ['Praça dos Trabalhadores', 'Albert Lithule'],
-      'Xipamanine': ['Xipamanine'],
-      'Hulene': ['Hulene'],
-      'Magoanine': ['Magoanine'],
-      'Zimpeto': ['Terminal Zimpeto'],
-      'Albazine': ['Albasine'],
-      'Jardim': ['Jardim'],
-      
-      // Matola neighborhoods
-      'Matola Sede': ['Terminal Matola Sede', 'Godinho', 'Paragem da Shoprite'],
-      'Machava': ['Machava Sede', 'Machava Socimol'],
-      'Matola Gare': ['Matola Gare', 'Terminal Matola Gare'],
-      'Tchumene': ['Tchumene'],
-      'T3': ['T3'],
-      'Fomento': ['Fomento'],
-      'Liberdade': ['Liberdade'],
-      'Malhampsene': ['Terminal Malhampsene']
-    };
-
-    // Get search terms for this neighborhood
-    const searchTerms = neighborhoodStopMap[neighborhood] || neighborhood.split('/').map(n => n.trim());
-    
-    // Search for stops matching any of the search terms
-    const stops = await prisma.paragem.findMany({
-      where: {
-        OR: searchTerms.map(term => ({
-          nome: { contains: term, mode: 'insensitive' }
-        }))
-      },
-      select: {
-        nome: true,
-      },
-      orderBy: {
-        nome: 'asc',
-      },
-      take: 20
-    });
-
-    // Extract unique stop names
-    let stopNames = stops.map(s => s.nome);
-    
-    // If no stops found in Paragem table, search terminals from routes
-    if (stopNames.length === 0) {
-      const routes = await prisma.via.findMany({
-        where: {
-          OR: searchTerms.flatMap(term => [
-            { terminalPartida: { contains: term, mode: 'insensitive' } },
-            { terminalChegada: { contains: term, mode: 'insensitive' } }
-          ])
-        },
-        select: {
-          terminalPartida: true,
-          terminalChegada: true,
-        },
-        take: 20
-      });
-
-      const terminals = new Set<string>();
-      routes.forEach(route => {
-        if (route.terminalPartida) terminals.add(route.terminalPartida);
-        if (route.terminalChegada) terminals.add(route.terminalChegada);
-      });
-
-      stopNames = Array.from(terminals).sort();
-    }
-
-    // Always return at least the neighborhood name as a stop
-    if (stopNames.length === 0) {
-      console.log(`⚠️  No stops found for neighborhood: ${neighborhood}, using neighborhood name`);
-      return [neighborhood];
-    }
-
-    return stopNames;
+// NOTE: getNeighborhoodsByRegion and getStopsByNeighborhood are now imported from @/lib/neighborhoodService
+// They dynamically query the database based on ViaParagem relations and coordinates
   } catch (error) {
     console.error('Error getting stops by neighborhood:', error);
     // Return neighborhood name as fallback
@@ -868,7 +755,51 @@ async function getAvailableDestinations(origin: string): Promise<string[]> {
     // Normalizar origem para busca (remover acentos, lowercase)
     const normalizedOrigin = origin.toLowerCase().trim();
     
-    // Buscar rotas onde a origem pode ser terminal de partida OU chegada
+    // FIRST: Try to find routes via ViaParagem relations (most accurate)
+    const routesViaParagem = await prisma.via.findMany({
+      where: {
+        paragens: {
+          some: {
+            paragem: {
+              nome: { contains: origin, mode: 'insensitive' }
+            }
+          }
+        }
+      },
+      select: {
+        terminalPartida: true,
+        terminalChegada: true,
+        nome: true,
+      },
+    });
+
+    console.log(`🔍 Searching destinations from "${origin}" via ViaParagem:`, {
+      normalizedOrigin,
+      routesFound: routesViaParagem.length
+    });
+
+    // If found via ViaParagem, use those results
+    if (routesViaParagem.length > 0) {
+      const destinations = new Set<string>();
+      
+      routesViaParagem.forEach(route => {
+        // Add both terminals as potential destinations
+        if (route.terminalPartida && 
+            !route.terminalPartida.toLowerCase().includes(normalizedOrigin)) {
+          destinations.add(route.terminalPartida);
+        }
+        if (route.terminalChegada && 
+            !route.terminalChegada.toLowerCase().includes(normalizedOrigin)) {
+          destinations.add(route.terminalChegada);
+        }
+      });
+
+      const finalDestinations = Array.from(destinations).sort();
+      console.log(`📍 Found ${finalDestinations.length} destinations via ViaParagem`);
+      return finalDestinations;
+    }
+    
+    // FALLBACK: Buscar rotas onde a origem pode ser terminal de partida OU chegada
     const routes = await prisma.via.findMany({
       where: {
         OR: [
@@ -937,7 +868,72 @@ async function searchRoutes(origin: string) {
   try {
     const normalizedOrigin = origin.toLowerCase().trim();
     
-    // Search for routes where origin is either departure or arrival (bidirectional)
+    // FIRST: Try to find routes via ViaParagem relations (most accurate)
+    const routesViaParagem = await prisma.via.findMany({
+      where: {
+        paragens: {
+          some: {
+            paragem: {
+              nome: { contains: origin, mode: 'insensitive' }
+            }
+          }
+        }
+      },
+      select: {
+        id: true,
+        nome: true,
+        terminalPartida: true,
+        terminalChegada: true,
+      },
+      take: 20,
+      orderBy: { nome: 'asc' }
+    });
+
+    // If found via ViaParagem, use those results
+    if (routesViaParagem.length > 0) {
+      const routes = routesViaParagem;
+      
+      // Collect unique destinations (bidirectional)
+      const destinationMap = new Map<string, any>();
+      
+      routes.forEach(route => {
+        // Forward: origin is departure → add arrival
+        if (route.terminalPartida && 
+            route.terminalPartida.toLowerCase().includes(normalizedOrigin)) {
+          if (route.terminalChegada && 
+              route.terminalChegada.toLowerCase() !== normalizedOrigin) {
+            destinationMap.set(route.terminalChegada, {
+              id: route.id,
+              name: route.nome,
+              origin: route.terminalPartida,
+              destination: route.terminalChegada,
+              fare: '20-30',
+              hours: '05:00 - 22:00'
+            });
+          }
+        }
+        
+        // Reverse: origin is arrival → add departure
+        if (route.terminalChegada && 
+            route.terminalChegada.toLowerCase().includes(normalizedOrigin)) {
+          if (route.terminalPartida && 
+              route.terminalPartida.toLowerCase() !== normalizedOrigin) {
+            destinationMap.set(route.terminalPartida, {
+              id: route.id,
+              name: route.nome,
+              origin: route.terminalChegada, // Reversed
+              destination: route.terminalPartida, // Reversed
+              fare: '20-30',
+              hours: '05:00 - 22:00'
+            });
+          }
+        }
+      });
+
+      return Array.from(destinationMap.values());
+    }
+    
+    // FALLBACK: Search by terminal names if no ViaParagem match
     const routes = await prisma.via.findMany({
       where: {
         OR: [

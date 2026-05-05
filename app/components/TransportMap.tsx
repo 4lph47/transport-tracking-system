@@ -10,6 +10,8 @@ interface Stop {
   latitude: number;
   longitude: number;
   isTerminal: boolean;
+  isPickup?: boolean;
+  isDestination?: boolean;
 }
 
 interface TransportMapProps {
@@ -21,6 +23,15 @@ interface TransportMapProps {
   routeCoords?: [number, number][];
   stops?: Stop[];
   paragemNome?: string;
+  destinationLat?: number;
+  destinationLng?: number;
+  destinationNome?: string;
+  userJourney?: {
+    from: string;
+    to: string;
+    fromId: string;
+    toId: string;
+  };
 }
 
 export default function TransportMap({
@@ -32,6 +43,10 @@ export default function TransportMap({
   routeCoords,
   stops,
   paragemNome,
+  destinationLat,
+  destinationLng,
+  destinationNome,
+  userJourney,
 }: TransportMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
@@ -181,35 +196,168 @@ export default function TransportMap({
       function drawRoute(coordinates: [number, number][]) {
         console.log('Drawing route with', coordinates.length, 'coordinates');
         
-        // Desenhar rota
-        map.addSource("route", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: coordinates,
+        // Find pickup and destination indices in the route
+        let pickupIndex = -1;
+        let destinationIndex = -1;
+        
+        if (stops && stops.length > 0) {
+          stops.forEach((stop, index) => {
+            if (stop.isPickup) {
+              // Find closest point on route to pickup
+              let minDist = Infinity;
+              coordinates.forEach((coord, coordIndex) => {
+                const dist = Math.sqrt(
+                  Math.pow(coord[0] - stop.longitude, 2) + 
+                  Math.pow(coord[1] - stop.latitude, 2)
+                );
+                if (dist < minDist) {
+                  minDist = dist;
+                  pickupIndex = coordIndex;
+                }
+              });
+            }
+            if (stop.isDestination) {
+              // Find closest point on route to destination
+              let minDist = Infinity;
+              coordinates.forEach((coord, coordIndex) => {
+                const dist = Math.sqrt(
+                  Math.pow(coord[0] - stop.longitude, 2) + 
+                  Math.pow(coord[1] - stop.latitude, 2)
+                );
+                if (dist < minDist) {
+                  minDist = dist;
+                  destinationIndex = coordIndex;
+                }
+              });
+            }
+          });
+        }
+
+        // Ensure pickup comes before destination
+        if (pickupIndex > destinationIndex && destinationIndex !== -1) {
+          [pickupIndex, destinationIndex] = [destinationIndex, pickupIndex];
+        }
+
+        // Draw different route segments with different colors
+        if (pickupIndex !== -1 && destinationIndex !== -1) {
+          // 1. Full route (gray) - background
+          map.addSource("route-full", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: coordinates,
+              },
             },
-          },
-        });
+          });
 
-        map.addLayer({
-          id: "route",
-          type: "line",
-          source: "route",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": "#2563eb",
-            "line-width": 5,
-            "line-opacity": 0.7,
-          },
-        });
+          map.addLayer({
+            id: "route-full",
+            type: "line",
+            source: "route-full",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#9ca3af", // Gray
+              "line-width": 8,
+              "line-opacity": 0.4,
+            },
+          });
 
-        console.log('Route layer added, adding stops and bus');
+          // 2. User journey segment (blue) - highlighted
+          const userJourneyCoords = coordinates.slice(pickupIndex, destinationIndex + 1);
+          map.addSource("route-journey", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: userJourneyCoords,
+              },
+            },
+          });
+
+          map.addLayer({
+            id: "route-journey",
+            type: "line",
+            source: "route-journey",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#3b82f6", // Blue
+              "line-width": 6,
+              "line-opacity": 0.9,
+            },
+          });
+
+          // 3. Bus to pickup segment (orange) - where bus needs to travel
+          const busToPickupCoords = coordinates.slice(0, pickupIndex + 1);
+          if (busToPickupCoords.length > 1) {
+            map.addSource("route-bus-to-pickup", {
+              type: "geojson",
+              data: {
+                type: "Feature",
+                properties: {},
+                geometry: {
+                  type: "LineString",
+                  coordinates: busToPickupCoords,
+                },
+              },
+            });
+
+            map.addLayer({
+              id: "route-bus-to-pickup",
+              type: "line",
+              source: "route-bus-to-pickup",
+              layout: {
+                "line-join": "round",
+                "line-cap": "round",
+              },
+              paint: {
+                "line-color": "#f59e0b", // Orange
+                "line-width": 5,
+                "line-opacity": 0.8,
+              },
+            });
+          }
+        } else {
+          // Fallback: single route color
+          map.addSource("route", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: coordinates,
+              },
+            },
+          });
+
+          map.addLayer({
+            id: "route",
+            type: "line",
+            source: "route",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#2563eb",
+              "line-width": 5,
+              "line-opacity": 0.7,
+            },
+          });
+        }
+
+        console.log('Route layers added, adding stops and bus');
         
         // Continue with stops and bus
         addStopsAndBus(coordinates);
@@ -264,21 +412,71 @@ export default function TransportMap({
       }
 
       stopsToRender.forEach((stop) => {
+        // Determine marker type and color
+        let markerColor = "#6b7280"; // Default gray
+        let markerSize = "14px";
+        let borderColor = "white";
+        let markerIcon = "";
+
+        // Check if this stop has special meaning
+        const matchingStop = stops?.find(s => 
+          Math.abs(s.latitude - stop.position[1]) < 0.001 && 
+          Math.abs(s.longitude - stop.position[0]) < 0.001
+        );
+
+        if (matchingStop?.isPickup) {
+          markerColor = "#10b981"; // Green for pickup
+          markerSize = "20px";
+          borderColor = "#ffffff";
+          markerIcon = "🟢";
+        } else if (matchingStop?.isDestination) {
+          markerColor = "#ef4444"; // Red for destination
+          markerSize = "20px";
+          borderColor = "#ffffff";
+          markerIcon = "🔴";
+        } else if (stop.isTerminal) {
+          markerColor = "#1f2937"; // Black for terminals
+          markerSize = "18px";
+          borderColor = "#ffffff";
+          markerIcon = "🏁";
+        }
+
         const el = document.createElement("div");
         el.style.cssText = `
-          width: ${stop.isTerminal ? "18px" : "14px"};
-          height: ${stop.isTerminal ? "18px" : "14px"};
-          background: ${stop.isTerminal ? "#1f2937" : "#6b7280"};
-          border: 3px solid white;
+          width: ${markerSize};
+          height: ${markerSize};
+          background: ${markerColor};
+          border: 3px solid ${borderColor};
           border-radius: 50%;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          position: relative;
         `;
+
+        // Add icon if available
+        if (markerIcon) {
+          el.innerHTML = markerIcon;
+          el.style.fontSize = "12px";
+        }
+
+        // Create popup content
+        let popupContent = `<strong>${stop.title}</strong>`;
+        if (matchingStop?.isPickup) {
+          popupContent += `<br><span style="color: #10b981;">📍 Sua paragem de embarque</span>`;
+        } else if (matchingStop?.isDestination) {
+          popupContent += `<br><span style="color: #ef4444;">🎯 Seu destino</span>`;
+        } else if (stop.isTerminal) {
+          popupContent += `<br><span style="color: #6b7280;">🏁 Terminal</span>`;
+        }
 
         new maplibregl.Marker({ element: el })
           .setLngLat(stop.position as [number, number])
           .setPopup(
-            new maplibregl.Popup({ offset: 15 }).setHTML(`<strong>${stop.title}</strong>`)
+            new maplibregl.Popup({ offset: 15 }).setHTML(popupContent)
           )
           .addTo(map);
       });
@@ -432,30 +630,56 @@ export default function TransportMap({
       // Start animation
       animateBus();
 
-      // Criar elemento HTML para o marcador da paragem
+      // Criar elemento HTML para o marcador da paragem (pickup)
       const paragemEl = document.createElement("div");
       paragemEl.className = "paragem-marker-container";
       paragemEl.innerHTML = `
-        <div class="paragem-pulse"></div>
+        <div class="paragem-pulse pickup"></div>
         <div class="paragem-icon">
           <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="12" fill="#dc2626" stroke="white" stroke-width="3"/>
+            <circle cx="16" cy="16" r="12" fill="#10b981" stroke="white" stroke-width="3"/>
             <circle cx="16" cy="16" r="5" fill="white"/>
+            <text x="16" y="20" text-anchor="middle" fill="#10b981" font-size="12" font-weight="bold">P</text>
           </svg>
         </div>
       `;
 
-      // Adicionar marcador da paragem
+      // Adicionar marcador da paragem (pickup)
       const paragemMarker = new maplibregl.Marker({ element: paragemEl })
         .setLngLat([paragemLng, paragemLat])
         .setPopup(
           new maplibregl.Popup({ offset: 16 }).setHTML(
-            `<strong>${paragemNome || "Sua Paragem"}</strong><br><span style="color: black;">Aguardando transporte</span>`
+            `<strong>📍 ${paragemNome || "Sua Paragem"}</strong><br><span style="color: #10b981;">Embarque aqui</span>`
           )
         )
         .addTo(map);
 
       paragemMarkerRef.current = paragemMarker;
+
+      // Adicionar marcador do destino se fornecido
+      if (destinationLat && destinationLng) {
+        const destinationEl = document.createElement("div");
+        destinationEl.className = "destination-marker-container";
+        destinationEl.innerHTML = `
+          <div class="paragem-pulse destination"></div>
+          <div class="paragem-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="16" cy="16" r="12" fill="#ef4444" stroke="white" stroke-width="3"/>
+              <circle cx="16" cy="16" r="5" fill="white"/>
+              <text x="16" y="20" text-anchor="middle" fill="#ef4444" font-size="12" font-weight="bold">D</text>
+            </svg>
+          </div>
+        `;
+
+        new maplibregl.Marker({ element: destinationEl })
+          .setLngLat([destinationLng, destinationLat])
+          .setPopup(
+            new maplibregl.Popup({ offset: 16 }).setHTML(
+              `<strong>🎯 ${destinationNome || "Seu Destino"}</strong><br><span style="color: #ef4444;">Desembarque aqui</span>`
+            )
+          )
+          .addTo(map);
+      }
 
       // Ajustar bounds para mostrar toda a rota
       const bounds = new maplibregl.LngLatBounds();
@@ -557,8 +781,16 @@ export default function TransportMap({
           color: #374151;
         }
 
-        /* Marcador da paragem */
+        /* Marcador da paragem (pickup) */
         .paragem-marker-container {
+          position: relative;
+          width: 32px;
+          height: 32px;
+          background: transparent;
+          border: none;
+        }
+
+        .destination-marker-container {
           position: relative;
           width: 32px;
           height: 32px;
@@ -571,7 +803,7 @@ export default function TransportMap({
           top: 0;
           left: 0;
           z-index: 2;
-          filter: drop-shadow(0 4px 8px rgba(220, 38, 38, 0.4));
+          filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
         }
 
         .paragem-pulse {
@@ -581,11 +813,18 @@ export default function TransportMap({
           transform: translate(-50%, -50%);
           width: 24px;
           height: 24px;
-          background: #dc2626;
           border-radius: 50%;
           opacity: 0.6;
           animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
           z-index: 1;
+        }
+
+        .paragem-pulse.pickup {
+          background: #10b981; /* Green for pickup */
+        }
+
+        .paragem-pulse.destination {
+          background: #ef4444; /* Red for destination */
         }
 
         /* Animações */

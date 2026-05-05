@@ -9,8 +9,13 @@ export async function GET(
   try {
     const params = await context.params;
     const busId = params.id;
+    
+    // Get query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const paragemId = searchParams.get('paragem');
+    const destinationId = searchParams.get('destination');
 
-    console.log('🚌 Fetching bus with ID:', busId);
+    console.log('🚌 Fetching bus with ID:', busId, 'paragem:', paragemId, 'destination:', destinationId);
 
     // Use shared bus location service
     const busData = await getBusLocation(busId);
@@ -21,6 +26,73 @@ export async function GET(
         { error: 'Bus not found' },
         { status: 404 }
       );
+    }
+
+    // If paragem and destination are provided, calculate journey details
+    if (paragemId && destinationId) {
+      const [pickupStop, destinationStop] = await Promise.all([
+        prisma.paragem.findUnique({ where: { id: paragemId } }),
+        prisma.paragem.findUnique({ where: { id: destinationId } })
+      ]);
+
+      if (pickupStop && destinationStop) {
+        // Calculate journey details
+        const [pickupLat, pickupLng] = pickupStop.geoLocation.split(',').map(Number);
+        const [destLat, destLng] = destinationStop.geoLocation.split(',').map(Number);
+        
+        // Haversine formula for journey distance
+        const R = 6371e3; // Earth's radius in meters
+        const φ1 = (pickupLat * Math.PI) / 180;
+        const φ2 = (destLat * Math.PI) / 180;
+        const Δφ = ((destLat - pickupLat) * Math.PI) / 180;
+        const Δλ = ((destLng - pickupLng) * Math.PI) / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                  Math.cos(φ1) * Math.cos(φ2) * 
+                  Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        const journeyDistance = Math.round(R * c); // meters
+        const velocidade = 45; // km/h
+        const journeyTime = Math.ceil(journeyDistance / 1000 / velocidade * 60); // minutes
+        
+        // Calculate fare based on journey distance: 10 MT per kilometer
+        const distanceKm = journeyDistance / 1000;
+        let fare = Math.max(10, Math.ceil(distanceKm * 10)); // Minimum 10 MT, then 10 MT per km
+
+        // Calculate distance from bus to pickup
+        const [busLat, busLng] = [busData.latitude, busData.longitude];
+        const φ3 = (busLat * Math.PI) / 180;
+        const φ4 = (pickupLat * Math.PI) / 180;
+        const Δφ2 = ((pickupLat - busLat) * Math.PI) / 180;
+        const Δλ2 = ((pickupLng - busLng) * Math.PI) / 180;
+
+        const a2 = Math.sin(Δφ2 / 2) * Math.sin(Δφ2 / 2) +
+                   Math.cos(φ3) * Math.cos(φ4) * 
+                   Math.sin(Δλ2 / 2) * Math.sin(Δλ2 / 2);
+        const c2 = 2 * Math.atan2(Math.sqrt(a2), Math.sqrt(1 - a2));
+
+        const distanceToBus = Math.round(R * c2); // meters
+        const timeToBus = Math.ceil(distanceToBus / 1000 / velocidade * 60); // minutes
+        const totalTime = timeToBus + journeyTime;
+
+        // Add journey details to bus data
+        busData.journeyDistance = journeyDistance;
+        busData.journeyTime = journeyTime;
+        busData.totalTime = totalTime;
+        busData.fare = fare;
+        busData.userJourney = {
+          from: pickupStop.nome,
+          to: destinationStop.nome,
+          fromId: pickupStop.id,
+          toId: destinationStop.id
+        };
+        
+        // Update direction to show user journey
+        busData.direcao = `${pickupStop.nome} → ${destinationStop.nome}`;
+        
+        console.log(`✅ Added journey details: ${journeyDistance}m, ${journeyTime}min, ${fare}MT`);
+      }
     }
 
     console.log(`✅ Returning bus data for: ${busData.matricula} on ${busData.via}`);

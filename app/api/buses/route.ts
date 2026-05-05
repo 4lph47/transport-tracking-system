@@ -7,8 +7,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const paragemId = searchParams.get('paragemId');
     const viaId = searchParams.get('viaId');
+    const destinationId = searchParams.get('destinationId'); // User's destination stop
 
-    console.log('📍 Fetching buses for paragemId:', paragemId, 'viaId:', viaId);
+    console.log('📍 Fetching buses for paragemId:', paragemId, 'viaId:', viaId, 'destinationId:', destinationId);
 
     // If no parameters, return all buses using shared service
     if (!paragemId && !viaId) {
@@ -43,6 +44,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         buses: allBuses,
         total: allBuses.length,
+      });
+    }
+
+    // Check if this paragem is connected to the via through ViaParagem
+    const viaParagem = await prisma.viaParagem.findFirst({
+      where: {
+        viaId: viaId,
+        paragemId: paragemId
+      }
+    });
+
+    if (!viaParagem) {
+      console.log('⚠️  This stop is not on this route (no ViaParagem relation)');
+      // Return empty or search for routes that DO pass through this stop
+      const routesThroughStop = await prisma.via.findMany({
+        where: {
+          paragens: {
+            some: {
+              paragemId: paragemId
+            }
+          }
+        },
+        select: {
+          id: true,
+          codigo: true,
+          nome: true
+        },
+        take: 5
+      });
+
+      if (routesThroughStop.length > 0) {
+        console.log(`ℹ️  Found ${routesThroughStop.length} routes that pass through this stop:`,
+          routesThroughStop.map(r => r.codigo).join(', '));
+      }
+
+      return NextResponse.json({
+        buses: [],
+        total: 0,
+        message: 'This stop is not on the selected route',
+        alternativeRoutes: routesThroughStop
       });
     }
 
@@ -118,6 +159,29 @@ export async function GET(request: NextRequest) {
     });
 
     const [paragemLat, paragemLng] = paragem.geoLocation.split(',').map(Number);
+
+    // Get destination stop if provided
+    let destinationStop = null;
+    if (destinationId) {
+      destinationStop = await prisma.paragem.findUnique({
+        where: { id: destinationId },
+      });
+      
+      // Verify destination is also on this route
+      if (destinationStop) {
+        const destViaParagem = await prisma.viaParagem.findFirst({
+          where: {
+            viaId: viaId,
+            paragemId: destinationId
+          }
+        });
+        
+        if (!destViaParagem) {
+          console.log('⚠️  Destination stop is not on this route');
+          destinationStop = null; // Ignore invalid destination
+        }
+      }
+    }
 
     if (transportes.length === 0) {
       console.log('⚠️  No buses found on this via, returning all buses as fallback');
@@ -219,14 +283,63 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // Calculate journey details if destination is provided
+      let journeyDistance = 0;
+      let journeyTime = 0;
+      let totalTime = tempoEstimado;
+      let fare = 0;
+
+      if (destinationStop) {
+        // Calculate distance from pickup to destination (Haversine)
+        const [destLat, destLng] = destinationStop.geoLocation.split(',').map(Number);
+        
+        const φ3 = (destLat * Math.PI) / 180;
+        const Δφ2 = ((destLat - paragemLat) * Math.PI) / 180;
+        const Δλ2 = ((destLng - paragemLng) * Math.PI) / 180;
+
+        const a2 = Math.sin(Δφ2 / 2) * Math.sin(Δφ2 / 2) +
+                   Math.cos(φ2) * Math.cos(φ3) * 
+                   Math.sin(Δλ2 / 2) * Math.sin(Δλ2 / 2);
+        const c2 = 2 * Math.atan2(Math.sqrt(a2), Math.sqrt(1 - a2));
+
+        journeyDistance = Math.round(R * c2); // meters
+        journeyTime = Math.ceil(journeyDistance / 1000 / velocidade * 60); // minutes
+        totalTime = tempoEstimado + journeyTime;
+
+        // Calculate fare based on journey distance: 10 MT per kilometer
+        const distanceKm = journeyDistance / 1000;
+        fare = Math.max(10, Math.ceil(distanceKm * 10)); // Minimum 10 MT, then 10 MT per km
+      }
+
       return {
         id: transporte.id,
         matricula: transporte.matricula,
         via: transporte.via.nome,
         viaId: transporte.via.id,
-        direcao: `${transporte.via.terminalPartida} → ${transporte.via.terminalChegada}`,
-        distancia,
-        tempoEstimado,
+        // Show user's journey if destination provided, otherwise show full route
+        direcao: destinationStop 
+          ? `${paragem.nome} → ${destinationStop.nome}` 
+          : `${transporte.via.terminalPartida} → ${transporte.via.terminalChegada}`,
+        // Full bus route (for reference)
+        fullRoute: `${transporte.via.terminalPartida} → ${transporte.via.terminalChegada}`,
+        // User's journey segment
+        userJourney: destinationStop ? {
+          from: paragem.nome,
+          to: destinationStop.nome,
+          fromId: paragem.id,
+          toId: destinationStop.id
+        } : null,
+        
+        // Distance and time from bus to pickup
+        distancia,              // Distance from bus to pickup (meters)
+        tempoEstimado,          // Time until bus arrives at pickup (minutes)
+        
+        // Journey details (pickup to destination)
+        journeyDistance,        // Distance from pickup to destination (meters)
+        journeyTime,            // Time from pickup to destination (minutes)
+        totalTime,              // Total time: bus arrival + journey (minutes)
+        fare,                   // Fare based on journey distance (MT)
+        
         velocidade,
         latitude: currentLat,
         longitude: currentLng,
@@ -240,6 +353,9 @@ export async function GET(request: NextRequest) {
             latitude: lat,
             longitude: lng,
             isTerminal: vp.terminalBoolean,
+            // Mark if this is user's pickup or destination
+            isPickup: vp.paragem.id === paragemId,
+            isDestination: destinationStop ? vp.paragem.id === destinationId : false,
           };
         }),
       };

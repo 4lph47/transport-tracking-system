@@ -1,0 +1,399 @@
+# Neighborhood Mappings
+
+Auto-generated from ViaParagem data on 2026-05-04T22:34:54.961Z
+
+## Statistics
+
+- **Total Stops**: 1406
+- **Connected to Routes**: 357 (25.4%)
+- **Not Connected**: 1049 (74.6%)
+
+---
+
+## Maputo Neighborhoods
+
+### Baixa / Central (160 stops)
+
+- **Aeroporto** - 1 route(s): VIA-AER-BAI
+- **Albasine** - 3 route(s): VIA-21, VIA-53, VIA-39A
+- **Albasine (Rotunda)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (401)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (402)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (X04)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (X07)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (X08)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (X09)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (X10)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (X40)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albazine (X41)** - 3 route(s): VIA-21, VIA-39A, VIA-53
+- **Albert Lithule** - 21 route(s): VIA-39A, VIA-39B, VIA-47, VIA-11, VIA-20
+- **Albineiro** - 1 route(s): VIA-39B
+- **Albineiro** - 1 route(s): VIA-39B
+- **Alto Maé** - 6 route(s): VIA-POL-BAI, VIA-11, VIA-20, VIA-53, VIA-37
+- **Anfrena** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Av. 25 de Setembro** - 25 route(s): VIA-1A, VIA-POL-BAI, VIA-SOM-BAI, VIA-AER-BAI, VIA-11
+- **Av. de Moçambique** - 5 route(s): VIA-1A, VIA-T3-BAI, VIA-MAG-BAI, VIA-37, VIA-T3-MUS
+- **Av. Eduardo Mondlane** - 13 route(s): VIA-1A, VIA-POL-BAI, VIA-MACH-MUS, VIA-POL-MAT, VIA-T3-MUS
+- **Av. Julius Nyerere** - 16 route(s): VIA-1A, VIA-21, VIA-37, VIA-AER-BAI, VIA-11
+- **Bananeiras** - 1 route(s): VIA-MAL-MUS
+- **Bananeiras** - 1 route(s): VIA-MAL-MUS
+- **Bananeiras** - 1 route(s): VIA-MAL-MUS
+- **Banco** - 1 route(s): VIA-FOM-BAI
+- **Banco** - 1 route(s): VIA-FOM-BAI
+- **Barraca Verde** - 2 route(s): VIA-T3-MUS, VIA-T3-BAI
+- **Barraca Verde** - 2 route(s): VIA-T3-MUS, VIA-T3-BAI
+- **Bombas** - 4 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-MACH-MUS, VIA-TCH-BAI
+- **Bombas** - 4 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-MACH-MUS, VIA-TCH-BAI
+- **Bombas da Machava** - 2 route(s): VIA-MACH-MUS, VIA-MAL-MUS
+- **Boquisso** - 1 route(s): VIA-39B
+- **Campo** - 1 route(s): VIA-MAL-MUS
+- **Campo** - 1 route(s): VIA-MAL-MUS
+- **Canhueiro** - 1 route(s): VIA-39B
+- **Canhueiro** - 1 route(s): VIA-39B
+- **Canhueiro** - 1 route(s): VIA-39B
+- **Canhueiro** - 1 route(s): VIA-39B
+- **Canhueiro-P1499** - 1 route(s): VIA-39B
+- **Canhueiro-P1499** - 1 route(s): VIA-39B
+- **Carcaça** - 1 route(s): VIA-39B
+- **Carcaça** - 1 route(s): VIA-39B
+- **Carpintaria** - 1 route(s): VIA-20
+- **Casa Branca** - 5 route(s): VIA-47, VIA-FOM-BAI, VIA-MGARE-BAI, VIA-MACH-MUS, VIA-TCH-BAI
+- **Casa Branca** - 5 route(s): VIA-47, VIA-FOM-BAI, VIA-MGARE-BAI, VIA-MACH-MUS, VIA-TCH-BAI
+- **Casa Branca** - 6 route(s): VIA-47, VIA-FOM-BAI, VIA-MGARE-BAI, VIA-MACH-MUS, VIA-MAL-MUS
+- **Cavalo Branco** - 1 route(s): VIA-FOM-BAI
+- **Cavalo Branco** - 1 route(s): VIA-FOM-BAI
+- **Cemitério** - 1 route(s): VIA-39B
+- **Cemitério** - 1 route(s): VIA-39B
+- **Centro** - 1 route(s): VIA-MAL-MUS
+- **Centro** - 1 route(s): VIA-39B
+- **Centro** - 1 route(s): VIA-MAL-MUS
+- **Centro** - 1 route(s): VIA-39B
+- **Centro de Saúde** - 1 route(s): VIA-11
+- **Centro de Saúde** - 1 route(s): VIA-20
+- **Chamissava** - 1 route(s): VIA-1A
+- **Chapa Branca** - 1 route(s): VIA-39B
+- **Chapa Branca** - 1 route(s): VIA-39B
+- **Chiwewe** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Cimento** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Cimento** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Colete** - 1 route(s): VIA-20
+- **Contentor Vermelho** - 1 route(s): VIA-11
+- **Costa do Sol** - 1 route(s): VIA-17
+- **Distrito** - 1 route(s): VIA-39B
+- **Distrito** - 1 route(s): VIA-39B
+- **Distrito** - 1 route(s): VIA-39B
+- **Distrito** - 1 route(s): VIA-39B
+- **Dom Alexandre** - 2 route(s): VIA-21, VIA-17
+- **Escola** - 1 route(s): VIA-39B
+- **Escola** - 1 route(s): VIA-39B
+- **Esplanada** - 1 route(s): VIA-39B
+- **Esplanada** - 1 route(s): VIA-39B
+- **Estádio** - 2 route(s): VIA-T3-BAI, VIA-T3-MUS
+- **Estádio** - 2 route(s): VIA-T3-BAI, VIA-T3-MUS
+- **Estádio** - 2 route(s): VIA-T3-BAI, VIA-T3-MUS
+- **Estaleiro** - 1 route(s): VIA-11
+- **Estaleiro Naife** - 1 route(s): VIA-39B
+- **Estaleiro Naife** - 1 route(s): VIA-39B
+- **Facebook** - 1 route(s): VIA-20
+- **Ferragem** - 1 route(s): VIA-20
+- **Ginásio** - 1 route(s): VIA-20
+- **Grande Maputo** - 1 route(s): VIA-20
+- **Grande Maputo** - 1 route(s): VIA-20
+- **Hospital** - 2 route(s): VIA-MACH-MUS, VIA-MAL-MUS
+- **Hulene** - 8 route(s): VIA-17, VIA-39A, VIA-39B, VIA-11, VIA-20
+- **Hulene (Praça)** - 6 route(s): VIA-53, VIA-11, VIA-20, VIA-37, VIA-39A
+- **Igreja Mundial** - 1 route(s): VIA-20
+- **Intena** - 1 route(s): VIA-MAL-MUS
+- **Intena** - 1 route(s): VIA-MAL-MUS
+- **Jardim** - 18 route(s): VIA-21, VIA-53, VIA-11, VIA-20, VIA-37
+- **Laurentina** - 21 route(s): VIA-53, VIA-1A, VIA-11, VIA-17, VIA-20
+- **Machava Naz Naz** - 1 route(s): VIA-MACH-MUS
+- **Machava Naz Naz** - 1 route(s): VIA-MACH-MUS
+- **Machava Sede** - 1 route(s): VIA-MAL-MUS
+- **Machava Sede** - 1 route(s): VIA-MAL-MUS
+- **Machava Sede** - 1 route(s): VIA-MACH-MUS
+- **Magoanine** - 8 route(s): VIA-17, VIA-37, VIA-39A, VIA-39B, VIA-MAG-BAI
+- **Magoanine A** - 6 route(s): VIA-MAG-BAI, VIA-53, VIA-MAG-ZIM, VIA-20, VIA-37
+- **Magoanine B** - 6 route(s): VIA-MAG-ZIM, VIA-MAG-BAI, VIA-20, VIA-53, VIA-37
+- **Manduca** - 1 route(s): VIA-T3-MUS
+- **Manduca** - 1 route(s): VIA-T3-MUS
+- **Maquele** - 1 route(s): VIA-39B
+- **Maquele** - 1 route(s): VIA-39B
+- **Matchekane** - 1 route(s): VIA-39B
+- **Matendene** - 1 route(s): VIA-20
+- **Maxaquene** - 4 route(s): VIA-MAX-BAI, VIA-AER-BAI, VIA-39A, VIA-39B
+- **Michafutene** - 1 route(s): VIA-11
+- **Museu** - 12 route(s): VIA-MAT-BAI, VIA-53, VIA-TCH-BAI, VIA-MGARE-BAI, VIA-FOM-BAI
+- **Mussumbuluco** - 1 route(s): VIA-T3-BAI
+- **Nice Nice** - 1 route(s): VIA-MACH-MUS
+- **Padaria** - 1 route(s): VIA-T3-BAI
+- **Padaria** - 2 route(s): VIA-47, VIA-MACH-MUS
+- **Padaria** - 1 route(s): VIA-MAL-MUS
+- **Padaria** - 1 route(s): VIA-MAL-MUS
+- **Padaria** - 1 route(s): VIA-39B
+- **Padaria** - 1 route(s): VIA-39B
+- **Padaria-P1494** - 1 route(s): VIA-39B
+- **Padaria-P1494** - 1 route(s): VIA-39B
+- **Paragem das Bombas (N4)** - 5 route(s): VIA-47, VIA-FOM-BAI, VIA-MGARE-BAI, VIA-MACH-MUS, VIA-TCH-BAI
+- **Paragem Praia** - 1 route(s): VIA-17
+- **Pepsi** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Petromoc** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Petromoc** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Polana Cimento** - 5 route(s): VIA-POL-BAI, VIA-POL-MAT, VIA-SOM-BAI, VIA-17, VIA-21
+- **Polana Shopping** - 3 route(s): VIA-POL-MAT, VIA-POL-BAI, VIA-21
+- **Portagem** - 11 route(s): VIA-MAT-BAI, VIA-MACH-MUS, VIA-TCH-BAI, VIA-MAT-MUS, VIA-MAL-MUS
+- **Portagem (Matola)** - 10 route(s): VIA-47, VIA-51A, VIA-51C, VIA-MAT-MUS, VIA-MAT-BAI
+- **Praça dos Trabalhadores** - 21 route(s): VIA-1A, VIA-MAT-BAI, VIA-T3-BAI, VIA-POL-BAI, VIA-MAG-BAI
+- **Praça dos Trabalhadores (Baixa)** - 21 route(s): VIA-1A, VIA-11, VIA-17, VIA-20, VIA-39A
+- **Pt** - 1 route(s): VIA-39B
+- **Pt** - 1 route(s): VIA-39B
+- **PT** - 1 route(s): VIA-20
+- **Rádio Marcone** - 2 route(s): VIA-11, VIA-39A
+- **Recheio** - 1 route(s): VIA-MAL-MUS
+- **Rua da Escolinha** - 1 route(s): VIA-20
+- **Rua da Ferragem** - 1 route(s): VIA-20
+- **Rua da Igreja** - 1 route(s): VIA-20
+- **Rua da Padaria** - 1 route(s): VIA-39B
+- **Rua do Parque** - 1 route(s): VIA-39B
+- **Rua do Parque** - 1 route(s): VIA-39B
+- **Serralharia** - 1 route(s): VIA-39B
+- **Sial** - 2 route(s): VIA-MACH-MUS, VIA-47
+- **Sial** - 1 route(s): VIA-MACH-MUS
+- **Sommerschield** - 3 route(s): VIA-SOM-BAI, VIA-17, VIA-21
+- **Stop 12565544210** - 4 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-MACH-MUS, VIA-TCH-BAI
+- **T3 (Terminal)** - 2 route(s): VIA-T3-BAI, VIA-T3-MUS
+- **T3 Mercado** - 2 route(s): VIA-T3-MUS, VIA-T3-BAI
+- **Tamega** - 1 route(s): VIA-MAL-MUS
+- **Tamega** - 1 route(s): VIA-MAL-MUS
+- **Terminal Katembe** - 1 route(s): VIA-1A
+- **Terminal Museu** - 7 route(s): VIA-21, VIA-MACH-MUS, VIA-MAT-MUS, VIA-MAL-MUS, VIA-37
+- **Terminal Zimpeto** - 6 route(s): VIA-17, VIA-37, VIA-39A, VIA-MAG-ZIM, VIA-20
+- **Xikhelene** - 1 route(s): VIA-39B
+- **Xikhelene** - 1 route(s): VIA-39B
+- **Xipamanine** - 8 route(s): VIA-T3-BAI, VIA-MAG-BAI, VIA-17, VIA-39A, VIA-39B
+- **Zimpeto** - 8 route(s): VIA-MAG-BAI, VIA-21, VIA-53, VIA-17, VIA-37
+- **Zuide** - 2 route(s): VIA-FOM-BAI, VIA-MACH-MUS
+- **Zuide** - 2 route(s): VIA-FOM-BAI, VIA-MACH-MUS
+
+### Zimpeto (2 stops)
+
+- **Cruzamento de Zimpeto** - 1 route(s): VIA-39B
+- **Cruzamento de Zimpeto** - 1 route(s): VIA-39B
+
+### Jardim (2 stops)
+
+- **Jardim da Machava** - 2 route(s): VIA-T3-MUS, VIA-T3-BAI
+- **Jardim da Machava** - 2 route(s): VIA-T3-MUS, VIA-T3-BAI
+
+---
+
+## Matola Neighborhoods
+
+### Matola Sede (171 stops)
+
+- **006** - 3 route(s): VIA-MAT-MUS, VIA-MAT-BAI, VIA-POL-MAT
+- **006** - 3 route(s): VIA-MAT-MUS, VIA-MAT-BAI, VIA-POL-MAT
+- **007** - 3 route(s): VIA-MAT-MUS, VIA-MAT-BAI, VIA-POL-MAT
+- **007** - 3 route(s): VIA-MAT-MUS, VIA-MAT-BAI, VIA-POL-MAT
+- **120** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **120** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **16** - 1 route(s): VIA-MAL-MUS
+- **16** - 1 route(s): VIA-MAL-MUS
+- **Barraca Amarela** - 1 route(s): VIA-51C
+- **Barraca Amarela** - 1 route(s): VIA-51C
+- **Barraca Amarela Mcel** - 1 route(s): VIA-51C
+- **Barraca Amarela Mcel** - 1 route(s): VIA-51C
+- **Bic** - 1 route(s): VIA-MAT-MUS
+- **Boane** - 1 route(s): VIA-51A
+- **Boane (101)** - 1 route(s): VIA-51A
+- **Boane (103)** - 1 route(s): VIA-51A
+- **Boane (104)** - 1 route(s): VIA-51A
+- **Boane (105)** - 1 route(s): VIA-51A
+- **Boane (106)** - 1 route(s): VIA-51A
+- **Boane (707)** - 1 route(s): VIA-51A
+- **Boane (C3)** - 1 route(s): VIA-51A
+- **Bombas** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Bombas** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Casa Abandonada** - 1 route(s): VIA-MAL-MUS
+- **Casa Abandonada** - 1 route(s): VIA-MAL-MUS
+- **Casa Bonita** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **Casa Bonita** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **Ceres** - 1 route(s): VIA-51C
+- **Ceres** - 1 route(s): VIA-51C
+- **Chissano** - 3 route(s): VIA-MAT-MUS, VIA-51A, VIA-MAT-BAI
+- **Chissano** - 3 route(s): VIA-MAT-MUS, VIA-51A, VIA-MAT-BAI
+- **Chiwewe** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Cidade da Matola (109)** - 1 route(s): VIA-POL-MAT
+- **Cidade da Matola (110)** - 1 route(s): VIA-POL-MAT
+- **Cidade da Matola (C4)** - 1 route(s): VIA-POL-MAT
+- **Contentor Amarelo** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Contentor Amarelo** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Control** - 1 route(s): VIA-MAL-MUS
+- **Controle** - 1 route(s): VIA-MAL-MUS
+- **Cossa** - 1 route(s): VIA-MAL-MUS
+- **Cossa** - 1 route(s): VIA-MAL-MUS
+- **Cruzamento** - 1 route(s): VIA-51A
+- **Cruzamento** - 1 route(s): VIA-51A
+- **Cruzamento de Namaacha** - 1 route(s): VIA-51C
+- **Cruzamento de Namaacha** - 1 route(s): VIA-51C
+- **Darling** - 1 route(s): VIA-47
+- **Darling** - 1 route(s): VIA-47
+- **EDM** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **EDM** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **Electro Matola** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Electro Matola** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Escola da Matola A** - 2 route(s): VIA-51A, VIA-MAT-BAI
+- **Escola da Matola A** - 2 route(s): VIA-51A, VIA-MAT-BAI
+- **Estaleiro** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Estaleiro** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Farmácia** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Farmácia** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Ferragem** - 1 route(s): VIA-51A
+- **Ferragem** - 1 route(s): VIA-51A
+- **Fim do Muro 2** - 1 route(s): VIA-MAL-MUS
+- **Fim do Muro 2** - 1 route(s): VIA-MAL-MUS
+- **Fim do Murro** - 1 route(s): VIA-MAL-MUS
+- **Finanças** - 1 route(s): VIA-51C
+- **Finanças** - 1 route(s): VIA-51C
+- **Fipag** - 1 route(s): VIA-51A
+- **Fipag** - 1 route(s): VIA-51A
+- **Godinho** - 3 route(s): VIA-MAT-BAI, VIA-MAT-MUS, VIA-51C
+- **Godinho (Cruzamento)** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Hospital** - 1 route(s): VIA-51C
+- **Hospital** - 1 route(s): VIA-51C
+- **Ibavet** - 3 route(s): VIA-MAT-MUS, VIA-51A, VIA-MAT-BAI
+- **Ibavet** - 3 route(s): VIA-MAT-MUS, VIA-51A, VIA-MAT-BAI
+- **Igreja** - 3 route(s): VIA-MAT-MUS, VIA-51A, VIA-MAT-BAI
+- **Igreja** - 3 route(s): VIA-MAT-BAI, VIA-MAT-MUS, VIA-51A
+- **Igreja** - 1 route(s): VIA-MAL-MUS
+- **Igreja** - 1 route(s): VIA-MAL-MUS
+- **Igreja** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Igreja** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Inav** - 1 route(s): VIA-POL-MAT
+- **João Mateus** - 1 route(s): VIA-51C
+- **João Mateus** - 1 route(s): VIA-51C
+- **João Mateus** - 1 route(s): VIA-51C
+- **Kaino** - 1 route(s): VIA-51A
+- **Kaino** - 1 route(s): VIA-51A
+- **km 15** - 1 route(s): VIA-MAL-MUS
+- **km 15** - 1 route(s): VIA-MAL-MUS
+- **km 15** - 1 route(s): VIA-MAL-MUS
+- **km 15** - 1 route(s): VIA-MAL-MUS
+- **Lusalite** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Lusalite** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Macuacua** - 1 route(s): VIA-51C
+- **Macuacua** - 1 route(s): VIA-51C
+- **Mafuiane** - 1 route(s): VIA-51C
+- **Mafureira** - 1 route(s): VIA-51A
+- **Mafureira** - 1 route(s): VIA-51A
+- **Mafurreira** - 1 route(s): VIA-MAL-MUS
+- **Mafurreira** - 1 route(s): VIA-MAL-MUS
+- **Magaiza** - 1 route(s): VIA-51C
+- **Magaiza** - 1 route(s): VIA-51C
+- **Malhampsene** - 4 route(s): VIA-TCH-BAI, VIA-MAL-MUS, VIA-47, VIA-MGARE-BAI
+- **Malhampsene (105)** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **Malhapsene** - 3 route(s): VIA-TCH-BAI, VIA-MAL-MUS, VIA-MGARE-BAI
+- **Malhapsene** - 3 route(s): VIA-TCH-BAI, VIA-MAL-MUS, VIA-MGARE-BAI
+- **Mangueira** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Mangueira** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Marliza** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Marliza** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Matola gare** - 2 route(s): VIA-MAL-MUS, VIA-MGARE-BAI
+- **Matola Gare** - 6 route(s): VIA-TCH-BAI, VIA-MAL-MUS, VIA-MGARE-BAI, VIA-47, VIA-51A
+- **Matola Gare (207)** - 2 route(s): VIA-MAL-MUS, VIA-MGARE-BAI
+- **Matola Gare (208)** - 2 route(s): VIA-MAL-MUS, VIA-MGARE-BAI
+- **Matola Gare (C2)** - 2 route(s): VIA-MAL-MUS, VIA-MGARE-BAI
+- **Matola Gare (Estação)** - 2 route(s): VIA-MAL-MUS, VIA-MGARE-BAI
+- **Matola Rio** - 1 route(s): VIA-51A
+- **Matola Rio** - 1 route(s): VIA-51A
+- **Matola Rio** - 1 route(s): VIA-51A
+- **Mercadinho** - 1 route(s): VIA-MAL-MUS
+- **Mercadinho** - 1 route(s): VIA-MAL-MUS
+- **Mercado Santos** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Mercado Santos** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Mesquita** - 3 route(s): VIA-MAT-MUS, VIA-51A, VIA-MAT-BAI
+- **Mesquita** - 3 route(s): VIA-MAT-MUS, VIA-51A, VIA-MAT-BAI
+- **Oficina** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Oficina** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Paragem 16** - 1 route(s): VIA-MAL-MUS
+- **Paragem 16** - 1 route(s): VIA-MAL-MUS
+- **Paragem 18** - 1 route(s): VIA-MAL-MUS
+- **Paragem 18** - 1 route(s): VIA-MAL-MUS
+- **Paragem da Shoprite (Matola)** - 3 route(s): VIA-MAT-BAI, VIA-MAT-MUS, VIA-51A
+- **Paragem João Mateus** - 1 route(s): VIA-51C
+- **Pilivi / Cmc** - 1 route(s): VIA-MAT-MUS
+- **Pilivi / Cmc** - 1 route(s): VIA-MAT-MUS
+- **Ponte** - 1 route(s): VIA-47
+- **Ponte** - 1 route(s): VIA-47
+- **Pontinha** - 1 route(s): VIA-51C
+- **Pontinha** - 1 route(s): VIA-51C
+- **Primeira Rua** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **Primeira Rua** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **Recheio** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Recheio** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Registro** - 3 route(s): VIA-MAT-BAI, VIA-MAT-MUS, VIA-51A
+- **Registro** - 3 route(s): VIA-MAT-BAI, VIA-MAT-MUS, VIA-51A
+- **Rua da Escola** - 1 route(s): VIA-MAL-MUS
+- **Rua da Escola** - 1 route(s): VIA-MAL-MUS
+- **Rua Real** - 1 route(s): VIA-MAL-MUS
+- **Rua Real** - 1 route(s): VIA-MAL-MUS
+- **Salão** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Salão** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Saul** - 1 route(s): VIA-MAL-MUS
+- **Saul** - 1 route(s): VIA-MAL-MUS
+- **Seta** - 1 route(s): VIA-51C
+- **Seta** - 1 route(s): VIA-51C
+- **Shoprite** - 1 route(s): VIA-51C
+- **Sikwama (211)** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Sikwama (212)** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Sons de África** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Sons de África** - 2 route(s): VIA-MAT-MUS, VIA-51C
+- **Takis** - 1 route(s): VIA-MAL-MUS
+- **Takis** - 1 route(s): VIA-MAL-MUS
+- **Tchumene** - 2 route(s): VIA-TCH-BAI, VIA-47
+- **Terminal de Malhampsene** - 3 route(s): VIA-TCH-BAI, VIA-MAL-MUS, VIA-MGARE-BAI
+- **Terminal Matola Sede** - 3 route(s): VIA-MAT-BAI, VIA-MAT-MUS, VIA-POL-MAT
+- **Terminal Matola Sede (Hanhane)** - 3 route(s): VIA-MAT-MUS, VIA-MAT-BAI, VIA-POL-MAT
+- **Thandavanto** - 1 route(s): VIA-51A
+- **Thandavanto** - 1 route(s): VIA-51A
+- **Tribunal** - 3 route(s): VIA-MAT-MUS, VIA-MAT-BAI, VIA-POL-MAT
+- **Tribunal** - 3 route(s): VIA-MAT-MUS, VIA-MAT-BAI, VIA-POL-MAT
+- **Tricamo** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **Tricamo** - 2 route(s): VIA-MGARE-BAI, VIA-MAL-MUS
+- **União** - 1 route(s): VIA-MAL-MUS
+- **União** - 1 route(s): VIA-MAL-MUS
+
+### Machava (17 stops)
+
+- **Barraquinha** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Barraquinha** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Chapas** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Chapas** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Fibra Glass** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Fibra Glass** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Fomento (Paragem)** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Liberdade** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Liberdade** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Liberdade (Paragem)** - 3 route(s): VIA-FOM-BAI, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Machava Socimol** - 2 route(s): VIA-MACH-MUS, VIA-47
+- **Mercadinho** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Mercadinho** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Raimundo** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Raimundo** - 2 route(s): VIA-MGARE-BAI, VIA-TCH-BAI
+- **Stop 12565371040** - 3 route(s): VIA-47, VIA-MGARE-BAI, VIA-TCH-BAI
+- **Stop 12565371041** - 1 route(s): VIA-47
+
+### Liberdade (1 stops)
+
+- **Bic** - 2 route(s): VIA-MAT-MUS, VIA-51C
+
+### Fomento (2 stops)
+
+- **Contentor Branco** - 1 route(s): VIA-MACH-MUS
+- **Oficina** - 2 route(s): VIA-MACH-MUS, VIA-47
+
+### Matola Gare (2 stops)
+
+- **Matola Gare** - 1 route(s): VIA-MAL-MUS
+- **Matola Gare** - 1 route(s): VIA-MAL-MUS
+

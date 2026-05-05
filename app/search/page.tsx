@@ -39,6 +39,7 @@ function SearchContent() {
   const [selectedMunicipio, setSelectedMunicipio] = useState("");
   const [selectedVia, setSelectedVia] = useState("");
   const [selectedParagem, setSelectedParagem] = useState("");
+  const [selectedDestination, setSelectedDestination] = useState("");
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [vias, setVias] = useState<Via[]>([]);
   const [paragens, setParagens] = useState<Paragem[]>([]);
@@ -57,6 +58,7 @@ function SearchContent() {
     const municipio = searchParams.get('municipio');
     const via = searchParams.get('via');
     const paragem = searchParams.get('paragem');
+    const destination = searchParams.get('destination');
 
     // If no search params, show the search form
     if (!municipio || !via || !paragem) {
@@ -87,7 +89,12 @@ function SearchContent() {
     }
 
     setShowForm(false);
-    const apiUrl = `/api/buses?paragemId=${paragem}&viaId=${via}`;
+    let apiUrl = `/api/buses?paragemId=${paragem}&viaId=${via}`;
+    
+    // Add destination if provided
+    if (destination) {
+      apiUrl += `&destinationId=${destination}`;
+    }
 
     // Fetch buses from API
     fetch(apiUrl)
@@ -98,10 +105,13 @@ function SearchContent() {
         return res.json();
       })
       .then((data) => {
+        console.log('🔍 DEBUG: API Response:', data);
         if (data.error) {
           console.error('API returned error:', data.error);
           setTransports([]);
         } else if (data.buses) {
+          console.log('🔍 DEBUG: Found buses:', data.buses.length);
+          console.log('🔍 DEBUG: First bus:', data.buses[0]);
           setTransports(data.buses);
         } else {
           setTransports([]);
@@ -117,18 +127,32 @@ function SearchContent() {
 
   const handleSearch = () => {
     if (selectedMunicipio && selectedVia && selectedParagem) {
-      router.push(
-        `/search?municipio=${selectedMunicipio}&via=${selectedVia}&paragem=${selectedParagem}`
-      );
+      let searchUrl = `/search?municipio=${selectedMunicipio}&via=${selectedVia}&paragem=${selectedParagem}`;
+      
+      // Add destination if selected
+      if (selectedDestination) {
+        searchUrl += `&destination=${selectedDestination}`;
+      }
+      
+      router.push(searchUrl);
     }
   };
 
   const handleTrackTransport = (transportId: string) => {
     console.log('Tracking transport with ID:', transportId);
     const paragem = searchParams.get('paragem');
+    const destination = searchParams.get('destination');
+    
     if (paragem) {
       console.log('With paragem:', paragem);
-      router.push(`/track/${transportId}?paragem=${paragem}`);
+      let trackUrl = `/track/${transportId}?paragem=${paragem}`;
+      
+      // Add destination if provided
+      if (destination) {
+        trackUrl += `&destination=${destination}`;
+      }
+      
+      router.push(trackUrl);
     } else {
       console.log('Without paragem');
       router.push(`/track/${transportId}`);
@@ -137,12 +161,18 @@ function SearchContent() {
 
   const viasFiltered = vias?.filter((via) => via.municipioId === selectedMunicipio) || [];
   const paragensFiltered = paragens?.filter((paragem) => paragem.viaIds.includes(selectedVia)) || [];
+  
+  // Filter destinations: same route as pickup, but exclude the pickup stop itself
+  const destinationsFiltered = paragens?.filter((paragem) => 
+    paragem.viaIds.includes(selectedVia) && paragem.id !== selectedParagem
+  ) || [];
 
   const isStepComplete = (step: number) => {
     switch (step) {
       case 1: return !!selectedMunicipio;
       case 2: return !!selectedVia;
       case 3: return !!selectedParagem;
+      case 4: return !!selectedDestination; // Optional step
       default: return false;
     }
   };
@@ -229,11 +259,13 @@ function SearchContent() {
             {/* Progress Steps */}
             <div className="mb-8">
               <div className="flex items-center justify-between">
-                {[1, 2, 3].map((step, index) => (
-                  <div key={step} className="flex items-center" style={{ flex: index < 2 ? '1 1 0%' : '0 0 auto' }}>
+                {[1, 2, 3, 4].map((step, index) => (
+                  <div key={step} className="flex items-center" style={{ flex: index < 3 ? '1 1 0%' : '0 0 auto' }}>
                     <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-200 ${
                       isStepComplete(step) 
                         ? 'bg-slate-700 border-slate-700 text-white shadow-md' 
+                        : step === 4 && !selectedVia
+                        ? 'bg-slate-100 border-slate-200 text-slate-300' // Disabled state for step 4
                         : 'bg-white border-slate-300 text-slate-400'
                     }`}>
                       {isStepComplete(step) ? (
@@ -244,13 +276,21 @@ function SearchContent() {
                         <span className="text-base font-bold leading-none">{step}</span>
                       )}
                     </div>
-                    {index < 2 && (
+                    {index < 3 && (
                       <div className={`flex-1 h-1 rounded-full transition-all duration-200 ${
                         isStepComplete(step) ? 'bg-slate-700' : 'bg-slate-300'
                       }`} />
                     )}
                   </div>
                 ))}
+              </div>
+              
+              {/* Step Labels */}
+              <div className="flex justify-between mt-3 text-xs text-slate-600">
+                <span>Município</span>
+                <span>Via</span>
+                <span>Origem</span>
+                <span className={selectedVia ? 'text-slate-600' : 'text-slate-300'}>Destino (opcional)</span>
               </div>
             </div>
 
@@ -351,17 +391,20 @@ function SearchContent() {
                 {/* Paragem */}
                 <div className="flex-1 min-w-0">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Sua Paragem
+                    Sua Paragem (Origem)
                   </label>
                   <div className="relative">
                     <select
                       value={selectedParagem}
-                      onChange={(e) => setSelectedParagem(e.target.value)}
+                      onChange={(e) => {
+                        setSelectedParagem(e.target.value);
+                        setSelectedDestination(""); // Reset destination when pickup changes
+                      }}
                       disabled={!selectedVia}
                       className="w-full px-4 py-3.5 pr-10 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-slate-900 bg-white disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-all appearance-none cursor-pointer hover:border-slate-400 disabled:hover:border-slate-300"
                       style={{ maxWidth: '100%' }}
                     >
-                      <option value="">Selecione a paragem</option>
+                      <option value="">Selecione sua paragem</option>
                       {paragensFiltered.map((paragem) => {
                         // Truncate long stop names for mobile
                         const maxLength = 35;
@@ -383,6 +426,47 @@ function SearchContent() {
                   </div>
                 </div>
 
+                {/* Destination (Optional) */}
+                <div className="flex-1 min-w-0">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Seu Destino 
+                    <span className="text-xs text-slate-500 font-normal ml-1">(opcional)</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedDestination}
+                      onChange={(e) => setSelectedDestination(e.target.value)}
+                      disabled={!selectedParagem}
+                      className="w-full px-4 py-3.5 pr-10 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent text-slate-900 bg-white disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed transition-all appearance-none cursor-pointer hover:border-slate-400 disabled:hover:border-slate-300"
+                      style={{ maxWidth: '100%' }}
+                    >
+                      <option value="">Selecione o destino (opcional)</option>
+                      {destinationsFiltered.map((paragem) => {
+                        // Truncate long stop names for mobile
+                        const maxLength = 35;
+                        const displayName = paragem.nome.length > maxLength 
+                          ? paragem.nome.substring(0, maxLength) + '...'
+                          : paragem.nome;
+                        return (
+                          <option key={paragem.id} value={paragem.id}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  {selectedParagem && !selectedDestination && (
+                    <p className="text-xs text-slate-500 mt-2">
+                      💡 Selecione um destino para ver preços e tempos de viagem detalhados
+                    </p>
+                  )}
+                </div>
+
                 <button
                   onClick={handleSearch}
                   disabled={!selectedMunicipio || !selectedVia || !selectedParagem}
@@ -402,9 +486,14 @@ function SearchContent() {
                 <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm text-blue-900">
-                  Selecione sua localização para ver transportes disponíveis em tempo real com estimativa de chegada.
-                </p>
+                <div>
+                  <p className="text-sm text-blue-900 mb-1">
+                    Selecione sua localização para ver transportes disponíveis em tempo real com estimativa de chegada.
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    💡 <strong>Dica:</strong> Adicione um destino para ver preços, tempos de viagem e rotas detalhadas.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -433,6 +522,11 @@ function SearchContent() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
+          {/* DEBUG: Test banner to confirm changes are applied */}
+          <div className="mb-4 p-4 bg-red-500 text-white text-center font-bold text-xl">
+            🚨 DEBUG: Se você vê esta mensagem vermelha, as mudanças estão funcionando! 🚨
+          </div>
+
           {/* Results Header */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
@@ -480,20 +574,22 @@ function SearchContent() {
                         </div>
                       </div>
 
-                      {/* Metrics */}
-                      <div className="grid grid-cols-3 gap-4">
+                      {/* Metrics - Updated with all information */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Existing: Tempo Estimado */}
                         <div className="bg-slate-50 rounded-lg p-3">
                           <div className="flex items-center space-x-2 mb-1">
                             <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span className="text-xs text-slate-600 font-medium">Tempo</span>
+                            <span className="text-xs text-slate-600 font-medium">Tempo Estimado</span>
                           </div>
                           <p className="text-lg font-bold text-slate-900">
                             {transport.tempoEstimado} min
                           </p>
                         </div>
 
+                        {/* Existing: Distância */}
                         <div className="bg-slate-50 rounded-lg p-3">
                           <div className="flex items-center space-x-2 mb-1">
                             <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -508,6 +604,7 @@ function SearchContent() {
                           </p>
                         </div>
 
+                        {/* Existing: Velocidade */}
                         <div className="bg-slate-50 rounded-lg p-3">
                           <div className="flex items-center space-x-2 mb-1">
                             <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -519,6 +616,112 @@ function SearchContent() {
                             {transport.velocidade} km/h
                           </p>
                         </div>
+
+                        {/* New: Preço da viagem */}
+                        {transport.fare && (
+                          <div className="bg-green-50 rounded-lg p-3">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                              </svg>
+                              <span className="text-xs text-green-600 font-medium">Preço</span>
+                            </div>
+                            <p className="text-lg font-bold text-green-700">
+                              {transport.fare} MT
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Additional Information Section - Always show - DEBUGGING */}
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-300" style={{minHeight: '100px'}}>
+                        <h4 className="text-lg font-bold text-blue-900 mb-3 flex items-center">
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          🎯 Detalhes da Viagem
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                          {/* Tempo até o autocarro chegar - ALWAYS SHOW */}
+                          <div className="bg-white p-3 rounded-lg border border-blue-200">
+                            <div className="text-blue-600 font-medium mb-1">⏱️ Autocarro chega em:</div>
+                            <div className="text-xl font-bold text-blue-900">{transport.tempoEstimado} min</div>
+                          </div>
+
+                          {/* Distância do autocarro - ALWAYS SHOW */}
+                          <div className="bg-white p-3 rounded-lg border border-blue-200">
+                            <div className="text-blue-600 font-medium mb-1">📏 Distância autocarro:</div>
+                            <div className="text-xl font-bold text-blue-900">
+                              {transport.distancia > 1000
+                                ? `${(transport.distancia / 1000).toFixed(1)} km`
+                                : `${transport.distancia} m`}
+                            </div>
+                          </div>
+
+                          {/* Tempo até ao destino - only if destination selected */}
+                          {transport.journeyTime ? (
+                            <div className="bg-white p-3 rounded-lg border border-green-200">
+                              <div className="text-green-600 font-medium mb-1">🚶 Tempo de viagem:</div>
+                              <div className="text-xl font-bold text-green-900">{transport.journeyTime} min</div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-100 p-3 rounded-lg border border-gray-200">
+                              <div className="text-gray-500 font-medium mb-1">🚶 Tempo de viagem:</div>
+                              <div className="text-sm text-gray-600">Selecione destino</div>
+                            </div>
+                          )}
+
+                          {/* Preço - only if destination selected */}
+                          {transport.fare ? (
+                            <div className="bg-white p-3 rounded-lg border border-green-200">
+                              <div className="text-green-600 font-medium mb-1">💰 Preço viagem:</div>
+                              <div className="text-xl font-bold text-green-900">{transport.fare} MT</div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-100 p-3 rounded-lg border border-gray-200">
+                              <div className="text-gray-500 font-medium mb-1">💰 Preço viagem:</div>
+                              <div className="text-sm text-gray-600">Selecione destino</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Always show this message for debugging */}
+                        <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+                          <div className="text-center text-sm">
+                            <strong>🔍 DEBUG:</strong> Esta seção deve sempre aparecer!
+                            {transport.journeyTime ? 
+                              ` Destino selecionado: ${transport.userJourney?.from} → ${transport.userJourney?.to}` : 
+                              ' Nenhum destino selecionado - selecione um destino para ver mais detalhes'
+                            }
+                            <br />
+                            <strong>Transport ID:</strong> {transport.id} | <strong>Matrícula:</strong> {transport.matricula}
+                          </div>
+                        </div>
+
+                        {/* Journey distance if available */}
+                        {transport.journeyDistance && (
+                          <div className="mt-3 pt-3 border-t border-blue-200">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-blue-600 font-medium">📍 Distância da sua viagem:</span>
+                              <span className="text-blue-900 font-bold">
+                                {transport.journeyDistance > 1000
+                                  ? `${(transport.journeyDistance / 1000).toFixed(1)} km`
+                                  : `${transport.journeyDistance} m`}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* User journey info if available */}
+                        {transport.userJourney && (
+                          <div className="mt-3 pt-3 border-t border-blue-200">
+                            <div className="text-center">
+                              <span className="text-sm text-blue-600 font-medium">
+                                🎯 Sua viagem: {transport.userJourney.from} → {transport.userJourney.to}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
