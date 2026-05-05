@@ -187,6 +187,172 @@ export default function LandingPage() {
     };
   }, []); // Only run once on mount
 
+  // Function to show bus route (defined outside useEffect to avoid recreation)
+  const showBusRoute = (bus: Bus) => {
+    if (!mapInstanceRef.current) return;
+
+    // Remove existing route layer if any
+    if (routeLayerIdRef.current) {
+      if (mapInstanceRef.current.getLayer(routeLayerIdRef.current)) {
+        mapInstanceRef.current.removeLayer(routeLayerIdRef.current);
+      }
+      if (mapInstanceRef.current.getSource(routeLayerIdRef.current)) {
+        mapInstanceRef.current.removeSource(routeLayerIdRef.current);
+      }
+    }
+
+    // Remove existing stop markers
+    stopMarkersRef.current.forEach(marker => marker.remove());
+    stopMarkersRef.current = [];
+
+    // Remove existing user marker
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+
+    // If no route path, skip
+    if (!bus.routePath || bus.routePath.length === 0) {
+      console.log('No route path for bus:', bus.matricula);
+      return;
+    }
+
+    console.log('Drawing route for bus:', bus.matricula, 'with', bus.routePath.length, 'waypoints');
+
+    // Use OSRM to get road-following route
+    const waypointsString = bus.routePath.map(w => `${w[0]},${w[1]}`).join(';');
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${waypointsString}?overview=full&geometries=geojson`;
+
+    fetch(osrmUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`OSRM returned status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+          console.warn('OSRM failed, using direct waypoints');
+          drawRoute(bus.routePath);
+          return;
+        }
+
+        // Use the route geometry from OSRM (follows roads)
+        const routeGeometry = data.routes[0].geometry;
+        console.log('✓ OSRM route received with', routeGeometry.coordinates.length, 'coordinates');
+        drawRoute(routeGeometry.coordinates);
+      })
+      .catch(error => {
+        console.error('❌ Error fetching route from OSRM:', error);
+        console.log('Using waypoints as fallback');
+        drawRoute(bus.routePath);
+      });
+
+    // Function to draw the route on map
+    function drawRoute(coordinates: [number, number][]) {
+      if (!mapInstanceRef.current) return;
+
+      // Create unique layer ID
+      const layerId = `route-${bus.id}`;
+      routeLayerIdRef.current = layerId;
+
+      // Add route source
+      mapInstanceRef.current.addSource(layerId, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates,
+          },
+        },
+      });
+
+      // Add route layer
+      mapInstanceRef.current.addLayer({
+        id: layerId,
+        type: 'line',
+        source: layerId,
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': '#ef4444',
+          'line-width': 4,
+          'line-opacity': 0.8,
+        },
+      });
+
+      // Add stop markers
+      if (bus.stops && bus.stops.length > 0) {
+        bus.stops.forEach((stop) => {
+          const el = document.createElement('div');
+          el.style.cssText = `
+            width: ${stop.isTerminal ? '18px' : '14px'};
+            height: ${stop.isTerminal ? '18px' : '14px'};
+            background: ${stop.isTerminal ? '#1f2937' : '#6b7280'};
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+          `;
+
+          const marker = new maplibregl.Marker({ element: el })
+            .setLngLat([stop.longitude, stop.latitude])
+            .setPopup(
+              new maplibregl.Popup({ offset: 15 }).setHTML(
+                `<strong>${stop.nome}</strong><br><span style="color: #6b7280; font-size: 12px;">${stop.isTerminal ? 'Terminal' : 'Paragem'}</span>`
+              )
+            );
+          
+          if (mapInstanceRef.current) {
+            marker.addTo(mapInstanceRef.current);
+          }
+
+          stopMarkersRef.current.push(marker);
+        });
+      }
+
+      // Add user location marker
+      if (userLocation) {
+        const userEl = document.createElement('div');
+        userEl.className = 'user-location-marker';
+        userEl.innerHTML = `
+          <div style="position: relative; width: 32px; height: 32px;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; opacity: 0.3; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+          </div>
+        `;
+
+        const userMarker = new maplibregl.Marker({ element: userEl })
+          .setLngLat(userLocation)
+          .setPopup(
+            new maplibregl.Popup({ offset: 16 }).setHTML(
+              '<strong>Sua Localização</strong>'
+            )
+          );
+        
+        if (mapInstanceRef.current) {
+          userMarker.addTo(mapInstanceRef.current);
+        }
+
+        userMarkerRef.current = userMarker;
+      }
+
+      // Fit map to route bounds (including user location if available)
+      const bounds = new maplibregl.LngLatBounds();
+      coordinates.forEach((coord) => bounds.extend(coord as [number, number]));
+      if (userLocation) {
+        bounds.extend(userLocation);
+      }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.fitBounds(bounds, { padding: 80 });
+      }
+    }
+  };
+
   // Separate effect to add/update bus markers when buses change
   useEffect(() => {
     if (!mapInstanceRef.current || buses.length === 0) return;
@@ -195,17 +361,22 @@ export default function LandingPage() {
 
     // Wait for map to be loaded
     if (!map.loaded()) {
-      map.once('load', () => {
-        addOrUpdateBusMarkers(buses);
-      });
-      return;
+      const loadHandler = () => {
+        updateBusMarkers();
+      };
+      map.once('load', loadHandler);
+      return () => {
+        map.off('load', loadHandler);
+      };
     }
 
-    addOrUpdateBusMarkers(buses);
+    updateBusMarkers();
 
-    function addOrUpdateBusMarkers(busesData: Bus[]) {
+    function updateBusMarkers() {
+      if (!mapInstanceRef.current) return;
+
       // Track which buses are in the current data
-      const currentBusIds = new Set(busesData.map(b => b.id));
+      const currentBusIds = new Set(buses.map(b => b.id));
 
       // Remove markers for buses that no longer exist
       busMarkersRef.current.forEach((marker, busId) => {
@@ -216,7 +387,7 @@ export default function LandingPage() {
       });
 
       // Update or create markers
-      busesData.forEach(bus => {
+      buses.forEach(bus => {
         const existingMarker = busMarkersRef.current.get(bus.id);
 
         if (existingMarker) {
@@ -234,18 +405,12 @@ export default function LandingPage() {
             existingMarker.setLngLat(newLngLat);
           }
           
-          // Update popup content only if it changed
-          const popup = existingMarker.getPopup();
-          if (popup) {
-            const newContent = `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`;
-            const currentContent = popup.getElement()?.querySelector('.maplibregl-popup-content')?.innerHTML;
-            if (currentContent !== newContent) {
-              popup.setHTML(newContent);
-            }
-          }
+          // Don't update popup - it causes flickering
+          // Popup content is set once when marker is created
         } else {
           // Create new marker only if it doesn't exist
           const el = document.createElement('div');
+          el.className = 'bus-marker';
           el.innerHTML = `
             <svg width="32" height="38" viewBox="0 0 32 38" style="display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); cursor: pointer;">
               <defs>
@@ -280,7 +445,7 @@ export default function LandingPage() {
           const marker = new maplibregl.Marker({ element: el })
             .setLngLat([bus.longitude, bus.latitude])
             .setPopup(
-              new maplibregl.Popup({ offset: 20 }).setHTML(
+              new maplibregl.Popup({ offset: 20, closeButton: false }).setHTML(
                 `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`
               )
             )
@@ -291,171 +456,7 @@ export default function LandingPage() {
         }
       });
     }
-
-    // Function to show bus route
-    function showBusRoute(bus: Bus) {
-        if (!mapInstanceRef.current) return;
-
-        // Remove existing route layer if any
-        if (routeLayerIdRef.current) {
-          if (mapInstanceRef.current.getLayer(routeLayerIdRef.current)) {
-            mapInstanceRef.current.removeLayer(routeLayerIdRef.current);
-          }
-          if (mapInstanceRef.current.getSource(routeLayerIdRef.current)) {
-            mapInstanceRef.current.removeSource(routeLayerIdRef.current);
-          }
-        }
-
-        // Remove existing stop markers
-        stopMarkersRef.current.forEach(marker => marker.remove());
-        stopMarkersRef.current = [];
-
-        // Remove existing user marker
-        if (userMarkerRef.current) {
-          userMarkerRef.current.remove();
-          userMarkerRef.current = null;
-        }
-
-        // If no route path, skip
-        if (!bus.routePath || bus.routePath.length === 0) {
-          console.log('No route path for bus:', bus.matricula);
-          return;
-        }
-
-        console.log('Drawing route for bus:', bus.matricula, 'with', bus.routePath.length, 'waypoints');
-
-        // Use OSRM to get road-following route
-        const waypointsString = bus.routePath.map(w => `${w[0]},${w[1]}`).join(';');
-        const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${waypointsString}?overview=full&geometries=geojson`;
-
-        fetch(osrmUrl)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`OSRM returned status ${response.status}`);
-            }
-            return response.json();
-          })
-          .then(data => {
-            if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-              console.warn('OSRM failed, using direct waypoints');
-              drawRoute(bus.routePath);
-              return;
-            }
-
-            // Use the route geometry from OSRM (follows roads)
-            const routeGeometry = data.routes[0].geometry;
-            console.log('✓ OSRM route received with', routeGeometry.coordinates.length, 'coordinates');
-            drawRoute(routeGeometry.coordinates);
-          })
-          .catch(error => {
-            console.error('❌ Error fetching route from OSRM:', error);
-            console.log('Using waypoints as fallback');
-            drawRoute(bus.routePath);
-          });
-
-        // Function to draw the route on map
-        function drawRoute(coordinates: [number, number][]) {
-          if (!mapInstanceRef.current) return;
-
-          // Create unique layer ID
-          const layerId = `route-${bus.id}`;
-          routeLayerIdRef.current = layerId;
-
-          // Add route source
-          mapInstanceRef.current.addSource(layerId, {
-            type: 'geojson',
-            data: {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: coordinates,
-              },
-            },
-          });
-
-          // Add route layer
-          mapInstanceRef.current.addLayer({
-            id: layerId,
-            type: 'line',
-            source: layerId,
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round',
-            },
-            paint: {
-              'line-color': '#ef4444',
-              'line-width': 4,
-              'line-opacity': 0.8,
-            },
-          });
-
-          // Add stop markers
-          if (bus.stops && bus.stops.length > 0) {
-            bus.stops.forEach((stop) => {
-              const el = document.createElement('div');
-              el.style.cssText = `
-                width: ${stop.isTerminal ? '18px' : '14px'};
-                height: ${stop.isTerminal ? '18px' : '14px'};
-                background: ${stop.isTerminal ? '#1f2937' : '#6b7280'};
-                border: 3px solid white;
-                border-radius: 50%;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                cursor: pointer;
-              `;
-
-              const marker = new maplibregl.Marker({ element: el })
-                .setLngLat([stop.longitude, stop.latitude])
-                .setPopup(
-                  new maplibregl.Popup({ offset: 15 }).setHTML(
-                    `<strong>${stop.nome}</strong><br><span style="color: #6b7280; font-size: 12px;">${stop.isTerminal ? 'Terminal' : 'Paragem'}</span>`
-                  )
-                );
-              
-              if (mapInstanceRef.current) {
-                marker.addTo(mapInstanceRef.current);
-              }
-
-              stopMarkersRef.current.push(marker);
-            });
-          }
-
-          // Add user location marker
-          if (userLocation) {
-            const userEl = document.createElement('div');
-            userEl.className = 'user-location-marker';
-            userEl.innerHTML = `
-              <div style="position: relative; width: 32px; height: 32px;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; opacity: 0.3; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
-              </div>
-            `;
-
-            const userMarker = new maplibregl.Marker({ element: userEl })
-              .setLngLat(userLocation)
-              .setPopup(
-                new maplibregl.Popup({ offset: 16 }).setHTML(
-                  '<strong>Sua Localização</strong>'
-                )
-              );
-            
-            if (mapInstanceRef.current) {
-              userMarker.addTo(mapInstanceRef.current);
-            }
-
-            userMarkerRef.current = userMarker;
-          }
-
-          // Fit map to route bounds (including user location if available)
-          const bounds = new maplibregl.LngLatBounds();
-          coordinates.forEach((coord) => bounds.extend(coord as [number, number]));
-          if (userLocation) {
-            bounds.extend(userLocation);
-          }
-          mapInstanceRef.current.fitBounds(bounds, { padding: 80 });
-        } // Close drawRoute function
-      } // Close showBusRoute function
-  }, [buses]); // Re-run when buses data changes
+  }, [buses]); // Only depend on buses
 
   return (
     <>
