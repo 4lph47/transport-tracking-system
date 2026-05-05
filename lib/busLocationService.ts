@@ -387,8 +387,10 @@ export async function getBusLocation(busId: string) {
       }
     }
 
-    // Calculate progress (simulated)
-    const progress = Math.random();
+    // Use deterministic progress based on bus ID (not random!)
+    // This ensures buses stay in consistent positions
+    const busIdHash = bus.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const progress = (busIdHash % 100) / 100; // Deterministic value between 0-1
 
     // Get street location
     const streetLocation = getCurrentStreetLocation(bus.via.codigo, progress);
@@ -480,6 +482,9 @@ export async function getAllBusesWithLocations() {
           },
           take: 1
         }
+      },
+      orderBy: {
+        id: 'asc' // Stable sort order
       }
     });
 
@@ -502,8 +507,10 @@ export async function getAllBusesWithLocations() {
         }
       }
 
-      // Calculate progress (simulated)
-      const progress = Math.random();
+      // Use deterministic progress based on bus ID (not random!)
+      // This ensures buses stay in consistent positions
+      const busIdHash = bus.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const progress = (busIdHash % 100) / 100; // Deterministic value between 0-1
 
       // Get street location
       const streetLocation = getCurrentStreetLocation(bus.via.codigo, progress);
