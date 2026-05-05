@@ -36,11 +36,16 @@ export default function LandingPage() {
   const busMarkersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
 
   useEffect(() => {
+    let isMounted = true;
+    let pollInterval: NodeJS.Timeout | null = null;
+
     // Initialize simulation on startup
     fetch('/api/startup')
       .then((res) => res.json())
       .then((data) => {
-        console.log('Simulation initialized:', data);
+        if (isMounted) {
+          console.log('Simulation initialized:', data);
+        }
       })
       .catch((error) => {
         console.error('Error initializing simulation:', error);
@@ -51,15 +56,19 @@ export default function LandingPage() {
       fetch('/api/buses')
         .then((res) => res.json())
         .then((data) => {
-          console.log('Fetched buses:', data);
-          if (data.buses) {
-            setBuses(data.buses);
+          if (isMounted) {
+            console.log('Fetched buses:', data);
+            if (data.buses) {
+              setBuses(data.buses);
+            }
+            setLoading(false);
           }
-          setLoading(false);
         })
         .catch((error) => {
-          console.error('Error fetching buses:', error);
-          setLoading(false);
+          if (isMounted) {
+            console.error('Error fetching buses:', error);
+            setLoading(false);
+          }
         });
     };
 
@@ -67,31 +76,41 @@ export default function LandingPage() {
     fetchBuses();
 
     // Poll for updates every 10 seconds for real-time tracking
-    const pollInterval = setInterval(fetchBuses, 10000);
+    pollInterval = setInterval(fetchBuses, 10000);
 
     // Get user's current location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const userLng = position.coords.longitude;
-          const userLat = position.coords.latitude;
-          console.log('User location:', userLat, userLng);
-          setUserLocation([userLng, userLat]);
+          if (isMounted) {
+            const userLng = position.coords.longitude;
+            const userLat = position.coords.latitude;
+            console.log('User location:', userLat, userLng);
+            setUserLocation([userLng, userLat]);
+          }
         },
         (error) => {
-          console.log('Could not get user location:', error.message);
-          // Default to Maputo center if geolocation fails
-          setUserLocation([32.5892, -25.9655]);
+          if (isMounted) {
+            console.log('Could not get user location:', error.message);
+            // Default to Maputo center if geolocation fails
+            setUserLocation([32.5892, -25.9655]);
+          }
         }
       );
     } else {
       // Geolocation not supported, use default
-      setUserLocation([32.5892, -25.9655]);
+      if (isMounted) {
+        setUserLocation([32.5892, -25.9655]);
+      }
     }
 
-    // Cleanup
+    // Cleanup - stop polling when component unmounts
     return () => {
-      clearInterval(pollInterval);
+      isMounted = false;
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        console.log('Stopped polling for bus updates');
+      }
     };
   }, []);
 
@@ -179,27 +198,53 @@ export default function LandingPage() {
       map.once('load', () => {
         addOrUpdateBusMarkers(buses);
       });
-    } else {
-      addOrUpdateBusMarkers(buses);
+      return;
     }
 
+    addOrUpdateBusMarkers(buses);
+
     function addOrUpdateBusMarkers(busesData: Bus[]) {
+      // Track which buses are in the current data
+      const currentBusIds = new Set(busesData.map(b => b.id));
+
+      // Remove markers for buses that no longer exist
+      busMarkersRef.current.forEach((marker, busId) => {
+        if (!currentBusIds.has(busId)) {
+          marker.remove();
+          busMarkersRef.current.delete(busId);
+        }
+      });
+
+      // Update or create markers
       busesData.forEach(bus => {
         const existingMarker = busMarkersRef.current.get(bus.id);
 
         if (existingMarker) {
-          // Update existing marker position smoothly
-          existingMarker.setLngLat([bus.longitude, bus.latitude]);
+          // Update existing marker position smoothly (no flickering)
+          const currentLngLat = existingMarker.getLngLat();
+          const newLngLat: [number, number] = [bus.longitude, bus.latitude];
           
-          // Update popup content
+          // Only update if position changed significantly (avoid micro-updates)
+          const distance = Math.sqrt(
+            Math.pow(currentLngLat.lng - newLngLat[0], 2) +
+            Math.pow(currentLngLat.lat - newLngLat[1], 2)
+          );
+          
+          if (distance > 0.0001) { // ~11 meters
+            existingMarker.setLngLat(newLngLat);
+          }
+          
+          // Update popup content only if it changed
           const popup = existingMarker.getPopup();
           if (popup) {
-            popup.setHTML(
-              `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`
-            );
+            const newContent = `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`;
+            const currentContent = popup.getElement()?.querySelector('.maplibregl-popup-content')?.innerHTML;
+            if (currentContent !== newContent) {
+              popup.setHTML(newContent);
+            }
           }
         } else {
-          // Create new marker
+          // Create new marker only if it doesn't exist
           const el = document.createElement('div');
           el.innerHTML = `
             <svg width="32" height="38" viewBox="0 0 32 38" style="display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); cursor: pointer;">
