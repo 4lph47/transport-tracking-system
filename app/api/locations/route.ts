@@ -34,6 +34,17 @@ export async function GET() {
     });
     
     console.log('Vias fetched:', vias.length);
+    console.log('Sample vias:', JSON.stringify(vias.slice(0, 3), null, 2));
+    
+    // Group vias by municipioId for debugging
+    const viasByMunicipio = vias.reduce((acc, via) => {
+      if (!acc[via.municipioId]) {
+        acc[via.municipioId] = [];
+      }
+      acc[via.municipioId].push(via.nome);
+      return acc;
+    }, {} as Record<string, string[]>);
+    console.log('Vias grouped by municipio:', JSON.stringify(viasByMunicipio, null, 2));
 
     const paragens = await prisma.paragem.findMany({
       select: {
@@ -73,7 +84,13 @@ export async function GET() {
     
     console.log('Returning response with', response.municipios.length, 'municipios');
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error: any) {
     console.error('Error fetching locations:', error);
     console.error('Error message:', error.message);

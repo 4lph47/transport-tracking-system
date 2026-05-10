@@ -1,355 +1,202 @@
-# 🚀 Quick Start - Sistema de Transportes
+# 🚀 Quick Start Guide
 
-**Tempo estimado:** 5 minutos  
-**Pré-requisitos:** Node.js 18+, npm
+## ✅ System is Ready!
 
----
+All data has been successfully set up:
+- ✅ 2 Municipalities (Maputo & Matola)
+- ✅ 221 Vias (Routes)
+- ✅ 1,348 Paragens (Stops)
+- ✅ 111 Transportes (All with locations)
 
-## ⚡ Início Rápido
+## 🎯 Start Using the System
 
-### 1. Instalar Dependências
-
-```bash
-cd transport-client
-npm install
-```
-
-### 2. Configurar Variáveis de Ambiente
-
-O arquivo `.env` já está configurado com:
-- ✅ Banco de dados Neon
-- ✅ Credenciais Africa's Talking (sandbox)
-- ✅ Telerivet secret
-
-**Nenhuma ação necessária!** 🎉
-
-### 3. Aplicar Migrations (se necessário)
-
-```bash
-npx prisma migrate deploy
-```
-
-### 4. Seed do Banco de Dados (se necessário)
-
-```bash
-npx prisma db seed
-```
-
-Isso criará:
-- 25 autocarros
-- 18 rotas
-- 32 paragens
-- 25 motoristas
-- 25 GeoLocations
-- 6 missions de exemplo
-- 3 usuários de teste
-
-### 5. Iniciar o Servidor
+### Step 1: Start the Server
 
 ```bash
 npm run dev
 ```
 
-### 6. Abrir o App
-
+Wait for the message:
 ```
-http://localhost:3000
-```
-
-**Pronto!** 🎉
-
-Você verá:
-- ✅ Mapa com 25 autocarros
-- ✅ Autocarros se movendo automaticamente
-- ✅ Atualização a cada 10 segundos
-- ✅ Simulação rodando em background
-
----
-
-## 🧪 Testar Funcionalidades
-
-### 1. Ver Autocarros no Mapa
-
-```
-1. Abrir http://localhost:3000
-2. Ver 25 autocarros no mapa
-3. Aguardar 10 segundos
-4. Ver autocarros se movendo
-5. Clicar em autocarro para ver rota
+✓ Ready in X seconds
+○ Local: http://localhost:3000
 ```
 
-### 2. Testar USSD API
+### Step 2: Open Your Browser
 
+Go to: **http://localhost:3000**
+
+You should see:
+- 🗺️ 3D map of Maputo/Matola
+- 🚌 111 buses on the map (blue markers)
+- 📊 "111 autocarros" indicator at top
+- 🔵 Real-time updates every 30 seconds
+
+### Step 3: Test the Features
+
+#### View Buses on Map
+- **URL:** http://localhost:3000
+- **Action:** Click on any bus marker to see its route
+- **Result:** Route path and stops will be displayed
+
+#### Search for Buses
+- **URL:** http://localhost:3000/search
+- **Action:** 
+  1. Select Municipality (Maputo or Matola)
+  2. Select Via (route)
+  3. Select Paragem (stop)
+  4. Click "Procurar"
+- **Result:** List of available buses
+
+#### Track a Bus
+- **Action:** Click "Acompanhar" on any bus in search results
+- **Result:** Real-time tracking of that specific bus
+
+#### Admin Panel
+- **URL:** http://localhost:3000/admin
+- **Login:** admin@example.com / admin123
+- **Features:** Manage buses, routes, stops, municipalities
+
+## 🔍 Verify Everything Works
+
+### Check 1: Municipalities
 ```bash
-# Menu principal
-curl -X POST http://localhost:3000/api/ussd \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "sessionId=test123" \
-  -d "serviceCode=*123#" \
-  -d "phoneNumber=+258840000001" \
-  -d "text="
-
-# Encontrar transporte (1 → 1 → 1)
-curl -X POST http://localhost:3000/api/ussd \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "sessionId=test123" \
-  -d "serviceCode=*123#" \
-  -d "phoneNumber=+258840000001" \
-  -d "text=1*1*1"
+node check-municipalities.js
 ```
 
-### 3. Ver Status da Simulação
+Expected output:
+```
+📍 Municipalities (2):
+   - Maputo (MUN001)
+   - Matola (MUN-MTL-001)
 
+🛣️  Vias per Municipality:
+   - Maputo: 173 vias
+   - Matola: 48 vias
+```
+
+### Check 2: Transport Locations
 ```bash
-curl http://localhost:3000/api/simulation
+node simple-check.js
 ```
 
-Resposta:
-```json
-{
-  "success": true,
-  "status": {
-    "running": true,
-    "busCount": 25
-  }
-}
+Expected output:
+```
+✅ Sample Transportes (first 3):
+   ACA-001M:
+     Location: -25.8392194,32.5615639
+     Via: Zimpeto - Patrice Lumumba (2)
+     Municipality: Maputo
+     Route Path: YES (488 points)
 ```
 
-### 4. Ver Autocarros via API
-
+### Check 3: Startup API
 ```bash
-curl http://localhost:3000/api/buses
+node test-startup-api.js
 ```
 
-### 5. Controlar Simulação
-
-```bash
-# Parar
-curl -X POST http://localhost:3000/api/simulation \
-  -H "Content-Type: application/json" \
-  -d '{"action": "stop"}'
-
-# Iniciar
-curl -X POST http://localhost:3000/api/simulation \
-  -H "Content-Type: application/json" \
-  -d '{"action": "start", "interval": 30000}'
+Expected output:
 ```
+✅ Startup API test complete!
+
+📊 Summary:
+   - 111 buses ready for map
+   - All buses have locations and route paths
+   - Buses distributed across 2 municipalities
+```
+
+## ❓ Troubleshooting
+
+### Problem: Buses not showing on map
+
+**Solution:**
+1. Check browser console (F12) for errors
+2. Verify API: http://localhost:3000/api/startup
+3. Restart server: Ctrl+C, then `npm run dev`
+
+### Problem: Matola not in municipality dropdown
+
+**Solution:**
+1. Hard refresh browser: Ctrl+Shift+R
+2. Check API: http://localhost:3000/api/locations
+3. Verify database: `node check-municipalities.js`
+
+### Problem: Buses not moving
+
+**Solution:**
+1. Wait 30 seconds (update interval)
+2. Check server logs for "🔄 Atualizando posições..."
+3. Refresh page
+
+## 📊 What You Should See
+
+### Homepage (http://localhost:3000)
+```
+┌─────────────────────────────────────────┐
+│  Transportes Moçambique                 │
+│  Tempo real • 111 autocarros            │
+├─────────────────────────────────────────┤
+│                                         │
+│         🗺️  MAP WITH BUSES              │
+│                                         │
+│  🚌 🚌 🚌 🚌 🚌 🚌 🚌 🚌 🚌 🚌          │
+│  🚌 🚌 🚌 🚌 🚌 🚌 🚌 🚌 🚌 🚌          │
+│                                         │
+│         [Entrar Button]                 │
+└─────────────────────────────────────────┘
+```
+
+### Search Page (http://localhost:3000/search)
+```
+┌─────────────────────────────────────────┐
+│  Procurar Transportes                   │
+├─────────────────────────────────────────┤
+│  Município: [Maputo ▼]                  │
+│  Via: [Maputo Centro - Matola Gare ▼]   │
+│  Paragem: [Praça dos Trabalhadores ▼]   │
+│  Destino: [Matola Gare ▼] (opcional)    │
+│                                         │
+│  [Procurar]                             │
+└─────────────────────────────────────────┘
+```
+
+### Search Results
+```
+┌─────────────────────────────────────────┐
+│  Transportes Disponíveis                │
+│  3 transportes em circulação            │
+├─────────────────────────────────────────┤
+│  🚌 ACA-001M                            │
+│  Via: Maputo Centro - Matola Gare       │
+│  Tempo estimado: 5 min                  │
+│  Distância: 2.3 km                      │
+│  [Acompanhar]                           │
+├─────────────────────────────────────────┤
+│  🚌 ACA-002M                            │
+│  Via: Maputo Centro - Matola Gare       │
+│  Tempo estimado: 12 min                 │
+│  Distância: 5.1 km                      │
+│  [Acompanhar]                           │
+└─────────────────────────────────────────┘
+```
+
+## 🎉 Success!
+
+If you see:
+- ✅ Buses on the map
+- ✅ Both municipalities in search
+- ✅ Buses moving every 30 seconds
+- ✅ Routes following roads
+
+**Your system is working perfectly!**
+
+## 📚 More Information
+
+- **Full Documentation:** See `SOLUTION_COMPLETE.md`
+- **System Status:** See `SYSTEM_STATUS_REPORT.md`
+- **Database Scripts:** See `check-*.js` files
 
 ---
 
-## 🎯 Funcionalidades Principais
-
-### 1. Rastreamento em Tempo Real ✅
-- Autocarros se movem automaticamente
-- Atualização a cada 30 segundos
-- Visualização no mapa a cada 10 segundos
-
-### 2. Notificações SMS ✅
-- Usuário cria mission via USSD
-- Sistema detecta quando autocarro está próximo
-- Envia SMS automaticamente
-
-### 3. Interface USSD ✅
-- Menu interativo
-- Busca de transportes
-- Informações em tempo real
-- Criação de missions
-
-### 4. Web App ✅
-- Mapa 3D interativo
-- 25 autocarros em tempo real
-- Visualização de rotas
-- Localização do usuário
-
----
-
-## 📱 Testar com Celular
-
-### 1. Expor Servidor Localmente
-
-```bash
-# Opção A: ngrok
-ngrok http 3000
-
-# Opção B: localtunnel
-npx localtunnel --port 3000
-```
-
-### 2. Configurar USSD
-
-```
-1. Copiar URL pública (ex: https://abc123.ngrok.io)
-2. Ir para Africa's Talking dashboard
-3. Configurar callback URL: https://abc123.ngrok.io/api/ussd
-4. Discar código USSD do celular
-```
-
----
-
-## 🔍 Verificar Logs
-
-### Console do Servidor
-
-```
-🚌 Inicializando posições dos autocarros...
-✅ 25 autocarros inicializados
-🚀 Iniciando simulação de autocarros (intervalo: 30000ms)
-🔄 Atualizando posições de 25 autocarros...
-✅ Posições atualizadas
-```
-
-### Browser Console
-
-```
-Simulation initialized: { success: true, status: { running: true, busCount: 25 } }
-Fetched buses: { buses: [...] }
-Bus AAA-1234-MP: lat=-25.9734, lng=32.5694
-```
-
----
-
-## 🗄️ Acessar Banco de Dados
-
-### Prisma Studio
-
-```bash
-npx prisma studio
-```
-
-Abre interface visual em `http://localhost:5555`
-
-### Ver Tabelas
-
-```
-- Transporte (25 autocarros)
-- Via (18 rotas)
-- Paragem (32 paragens)
-- Motorista (25 motoristas)
-- GeoLocation (25 posições)
-- MISSION (missions ativas)
-- Utente (usuários)
-```
-
----
-
-## 🎨 Painel Admin
-
-### Acessar
-
-```
-http://localhost:3000/admin
-```
-
-**Credenciais de teste:**
-```
-Email: admin@transporte.mz
-Senha: admin123
-```
-
-### Funcionalidades
-
-- ✅ Ver todos os autocarros
-- ✅ Adicionar/editar autocarros
-- ✅ Gerenciar rotas
-- ✅ Gerenciar motoristas
-- ✅ Ver missions ativas
-- ✅ Controlar simulação
-
----
-
-## 🚨 Troubleshooting
-
-### Erro: "Port 3000 already in use"
-
-```bash
-# Matar processo na porta 3000
-# Windows:
-netstat -ano | findstr :3000
-taskkill /PID <PID> /F
-
-# Mac/Linux:
-lsof -ti:3000 | xargs kill -9
-
-# Ou usar outra porta:
-PORT=3001 npm run dev
-```
-
-### Erro: "Database connection failed"
-
-```bash
-# Verificar .env
-cat .env | grep DATABASE_URL
-
-# Testar conexão
-npx prisma db pull
-```
-
-### Erro: "Simulation not starting"
-
-```bash
-# Ver logs no console
-# Verificar endpoint:
-curl http://localhost:3000/api/startup
-
-# Reiniciar servidor:
-# Ctrl+C e npm run dev novamente
-```
-
-### Autocarros não aparecem no mapa
-
-```bash
-# Verificar se há autocarros no banco:
-npx prisma studio
-# Abrir tabela Transporte
-
-# Se vazio, rodar seed:
-npx prisma db seed
-
-# Verificar API:
-curl http://localhost:3000/api/buses
-```
-
----
-
-## 📚 Documentação Completa
-
-Para mais detalhes, consulte:
-
-1. **Sistema Completo:** `REAL_TIME_SYSTEM_COMPLETE.md`
-2. **Deploy:** `DEPLOYMENT_GUIDE.md`
-3. **Status:** `PROJECT_STATUS_SUMMARY.md`
-4. **Implementação:** `REAL_TIME_TRACKING_IMPLEMENTATION.md`
-
----
-
-## ✅ Checklist de Verificação
-
-Após iniciar, verificar:
-
-- [ ] Servidor rodando em http://localhost:3000
-- [ ] Mapa carrega corretamente
-- [ ] 25 autocarros aparecem no mapa
-- [ ] Console mostra "Simulation initialized"
-- [ ] Após 10s, autocarros se movem
-- [ ] API `/api/buses` retorna dados
-- [ ] API `/api/simulation` mostra status
-- [ ] Prisma Studio abre (porta 5555)
-- [ ] Banco de dados tem 25 autocarros
-
----
-
-## 🎉 Pronto!
-
-Seu sistema está rodando! 🚀
-
-**Próximos passos:**
-1. Explorar o mapa
-2. Testar USSD API
-3. Ver painel admin
-4. Fazer deploy (ver `DEPLOYMENT_GUIDE.md`)
-
----
-
-**Tempo total:** ~5 minutos  
-**Dificuldade:** ⭐ Fácil  
-**Status:** ✅ Pronto para usar
+**Ready to go!** 🚀
+Start your server and enjoy the system!

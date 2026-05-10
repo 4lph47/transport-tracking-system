@@ -30,6 +30,14 @@ function TrackTransportContent() {
   const transportId = params.id as string;
   const paragemId = searchParams.get('paragem');
   const destinationId = searchParams.get('destination');
+  
+  // Debug logging
+  console.log('🔍 Track Page URL Params:', {
+    transportId,
+    paragemId,
+    destinationId,
+    allParams: Object.fromEntries(searchParams.entries())
+  });
 
   const [transport, setTransport] = useState<Transport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +68,9 @@ function TrackTransportContent() {
         apiUrl += `&destination=${destinationId}`;
       }
     }
+    
+    console.log('🔍 Track Page - Calling API:', apiUrl);
+    console.log('🔍 Track Page - Parameters:', { paragemId, destinationId });
     
     fetch(apiUrl)
       .then((res) => res.json())
@@ -93,6 +104,17 @@ function TrackTransportContent() {
         setTransport(mockTransport);
         setRouteCoords(data.routeCoords);
         setStops(data.stops);
+        
+        console.log('🔍 Track Page - Received stops from API:', data.stops?.length || 0);
+        console.log('🔍 Track Page - Stops with isPickup:', data.stops?.filter((s: any) => s.isPickup).length || 0);
+        console.log('🔍 Track Page - Stops with isDestination:', data.stops?.filter((s: any) => s.isDestination).length || 0);
+        if (data.stops && data.stops.length > 0) {
+          console.log('🔍 Track Page - Sample stops:', data.stops.slice(0, 3).map((s: any) => ({
+            nome: s.nome,
+            isPickup: s.isPickup,
+            isDestination: s.isDestination
+          })));
+        }
 
         // Set paragem to the user's selected stop or last stop as fallback
         if (paragemId && data.stops && data.stops.length > 0) {

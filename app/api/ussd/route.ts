@@ -635,12 +635,6 @@ Obrigado por usar nosso servico!`;
 
 // NOTE: getNeighborhoodsByRegion and getStopsByNeighborhood are now imported from @/lib/neighborhoodService
 // They dynamically query the database based on ViaParagem relations and coordinates
-  } catch (error) {
-    console.error('Error getting stops by neighborhood:', error);
-    // Return neighborhood name as fallback
-    return [neighborhood];
-  }
-}
 
 // NEW: Get available locations from database (terminals and major stops)
 async function getAvailableLocations(): Promise<string[]> {

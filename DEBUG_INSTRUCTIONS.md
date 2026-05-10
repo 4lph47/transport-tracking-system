@@ -1,129 +1,96 @@
-# 🔍 Debug Instructions - Frontend Issues
+# Instruções de Debug - "Nenhum transporte disponível"
 
-## 🚨 WHAT YOU SHOULD SEE NOW
+## O que foi feito
 
-### **1. Red Debug Banner**
-At the top of search results, you should see:
-```
-🚨 DEBUG: Se você vê esta mensagem vermelha, as mudanças estão funcionando! 🚨
-```
+Adicionei logs de debug temporários na API de buses para identificar por que está mostrando "Nenhum transporte disponível".
 
-### **2. Enhanced Transport Cards**
-Each transport should show:
+## Como testar
 
-#### **Basic Info (top):**
-```
-🚌 ABC-1234
-Via: Portagem → Terminal
-Direção: Terminal → Terminal
+### 1. Certifique-se que o servidor está rodando
+```bash
+cd transport-client
+npm run dev
 ```
 
-#### **Metrics Grid:**
+### 2. Abra o navegador e faça uma busca
+- Selecione: Município → Rota → Origem → Destino
+- Clique em "Pesquisar Transportes"
+
+### 3. Verifique os logs no terminal do servidor
+
+Os logs vão mostrar:
+
 ```
-⏱️ Tempo Estimado: 5 min
-📏 Distância: 1000 metros  
-⚡ Velocidade: 45 km/h
-💰 Preço: [only if destination selected]
+🔍 === BUSES API CALLED ===
+   paragemId (origem): [ID da origem]
+   destinoId: [ID do destino]
+   viaIds: [IDs das vias]
+
+📊 Found X transportes in database
+   Sample: [Matrícula] on via [Nome da via]
+
+🚌 Checking [Matrícula]:
+   Via: [Nome]
+   Origem index: [número] (looking for [ID])
+   Destino index: [número] (looking for [ID])
+   ✅ VALID: Passes through origem (X) → destino (Y)
+   OU
+   ❌ REJECTED: [motivo]
+
+📊 FINAL RESULT: X valid buses
 ```
 
-#### **🎯 Detalhes da Viagem Section (bright blue background):**
-```
-🎯 Detalhes da Viagem
+## O que procurar nos logs
 
-⏱️ Autocarro chega em: 5 min
-📏 Distância autocarro: 1000 m
-🚶 Tempo de viagem: Selecione destino
-💰 Preço viagem: Selecione destino
-
-🔍 DEBUG: Esta seção deve sempre aparecer! 
-Nenhum destino selecionado - selecione um destino para ver mais detalhes
-Transport ID: [bus-id] | Matrícula: [bus-number]
+### Cenário 1: Nenhum transporte encontrado no banco
 ```
+📊 Found 0 transportes in database
+```
+**Problema**: As vias não têm transportes atribuídos
+**Solução**: Verificar se os IDs das vias estão corretos
+
+### Cenário 2: Transportes encontrados mas rejeitados
+```
+📊 Found 1 transportes in database
+🚌 Checking BUS-XXX:
+   ❌ REJECTED: Bus doesn't pass through both stops
+```
+**Problema**: O transporte não passa pelas paragens selecionadas
+**Solução**: Verificar se as paragens pertencem à via
+
+### Cenário 3: Direção errada
+```
+🚌 Checking BUS-XXX:
+   ❌ REJECTED: Wrong direction (origem=5, destino=2)
+```
+**Problema**: Usuário selecionou destino antes da origem
+**Solução**: Usuário deve selecionar na ordem correta da rota
+
+### Cenário 4: IDs não encontrados
+```
+🚌 Checking BUS-XXX:
+   Origem index: -1 (looking for [ID])
+   Destino index: 3 (looking for [ID])
+   ❌ REJECTED: Bus doesn't pass through both stops
+```
+**Problema**: A paragem de origem não existe na via do transporte
+**Solução**: Verificar mapeamento de paragens nas vias
+
+## Próximos passos
+
+1. **Faça o teste** e copie os logs do terminal
+2. **Cole os logs** aqui para análise
+3. Vou identificar o problema exato e corrigir
+
+## Informações úteis para coletar
+
+Quando aparecer "Nenhum transporte disponível", anote:
+- Município selecionado
+- Rota selecionada (Terminal A → Terminal B)
+- Origem selecionada
+- Destino selecionado
+- Logs completos do terminal do servidor
 
 ---
 
-## 🔧 TROUBLESHOOTING STEPS
-
-### **Step 1: Check if Changes Applied**
-1. Open browser to `http://localhost:3001`
-2. Navigate to search page
-3. **Look for the RED banner** at the top
-4. If you DON'T see the red banner → Changes not applied
-
-### **Step 2: Hard Refresh Browser**
-1. Press `Ctrl+F5` (Windows) or `Cmd+Shift+R` (Mac)
-2. Or open Developer Tools (F12) → Right-click refresh → "Empty Cache and Hard Reload"
-
-### **Step 3: Check Browser Console**
-1. Press `F12` to open Developer Tools
-2. Go to "Console" tab
-3. Look for debug messages starting with "🔍 DEBUG:"
-4. Check for any red error messages
-
-### **Step 4: Verify URL**
-Make sure you're accessing the search results page:
-- Go to search form first
-- Select: Município → Via → Paragem
-- Click "Pesquisar Transportes"
-- Should redirect to `/search?municipio=X&via=Y&paragem=Z`
-
-### **Step 5: Check Network Tab**
-1. In Developer Tools, go to "Network" tab
-2. Refresh the page
-3. Look for API calls to `/api/buses?paragemId=...`
-4. Check if the API returns bus data
-
----
-
-## 🎯 EXPECTED BEHAVIOR
-
-### **Without Destination:**
-- Basic metrics show
-- Blue "Detalhes da Viagem" section shows
-- Two fields always visible: "Autocarro chega em" + "Distância autocarro"
-- Two fields show "Selecione destino": "Tempo de viagem" + "Preço viagem"
-- Yellow debug box with transport details
-
-### **With Destination Selected:**
-- All above PLUS:
-- "Tempo de viagem" shows actual minutes
-- "Preço viagem" shows actual price (10 MT per km)
-- Additional sections for journey distance and route details
-
----
-
-## 🚨 IF STILL NOT WORKING
-
-### **Possible Issues:**
-
-1. **Browser Cache**: Try incognito/private browsing mode
-2. **Different Port**: Check if app is running on different port
-3. **API Issues**: Check if `/api/buses` endpoint is working
-4. **JavaScript Errors**: Check browser console for errors
-5. **Wrong Page**: Make sure you're on search results, not search form
-
-### **Quick Test:**
-1. Open `http://localhost:3001` directly
-2. You should see the main page
-3. Navigate to search
-4. Fill form and submit
-5. Look for RED banner on results page
-
-### **If Red Banner Appears:**
-✅ Changes are working - look for blue "Detalhes da Viagem" section
-
-### **If Red Banner Missing:**
-❌ Changes not applied - check server logs, try restarting server
-
----
-
-## 📞 NEXT STEPS
-
-**Please tell me:**
-1. ✅ Do you see the RED debug banner?
-2. ✅ Do you see the blue "Detalhes da Viagem" section?
-3. ✅ What exactly do you see on the search results page?
-4. ✅ Any errors in browser console (F12)?
-5. ✅ What URL are you accessing?
-
-This will help me identify the exact issue! 🚌✨
+**Nota**: Estes logs são temporários para debug. Após identificar o problema, vou removê-los.

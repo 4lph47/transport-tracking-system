@@ -54,8 +54,25 @@ export default function TransportMap({
   const paragemMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
 
+  // Log stops prop immediately when component receives it
+  console.log('🗺️ TransportMap - Received props:');
+  console.log('🗺️ stops prop:', stops);
+  console.log('🗺️ stops length:', stops?.length || 0);
+  if (stops && stops.length > 0) {
+    console.log('🗺️ First stop:', stops[0]);
+    console.log('🗺️ Stops with isPickup:', stops.filter(s => s.isPickup).length);
+    console.log('🗺️ Stops with isDestination:', stops.filter(s => s.isDestination).length);
+    const pickupStop = stops.find(s => s.isPickup);
+    const destStop = stops.find(s => s.isDestination);
+    if (pickupStop) console.log('🟢 Pickup stop found:', pickupStop.nome, pickupStop.id);
+    if (destStop) console.log('🔴 Destination stop found:', destStop.nome, destStop.id);
+  }
+
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
+
+    console.log('🗺️ TransportMap - Initializing map');
+    console.log('🗺️ Stops available:', stops?.length || 0);
 
     // Inicializar mapa MapLibre
     const map = new maplibregl.Map({
@@ -365,6 +382,19 @@ export default function TransportMap({
 
       // Function to add stops and bus
       function addStopsAndBus(routeCoords: [number, number][]) {
+      console.log('🗺️ TransportMap - Adding stops and bus');
+      console.log('🗺️ Total stops received:', stops?.length || 0);
+      console.log('🗺️ Stops with isPickup:', stops?.filter(s => s.isPickup).length || 0);
+      console.log('🗺️ Stops with isDestination:', stops?.filter(s => s.isDestination).length || 0);
+      
+      if (stops && stops.length > 0) {
+        console.log('🗺️ Sample stops:', stops.slice(0, 3).map(s => ({
+          nome: s.nome,
+          isPickup: s.isPickup,
+          isDestination: s.isDestination
+        })));
+      }
+      
       // Adicionar paragens
       // Use provided stops if available, otherwise create default stops
       const defaultStops = [
@@ -375,7 +405,14 @@ export default function TransportMap({
         { position: routeCoords[routeCoords.length - 1], title: "Terminal Fim", isTerminal: true },
       ];
 
-      let stopsToRender;
+      let stopsToRender: Array<{
+        position: [number, number];
+        title: string;
+        isTerminal: boolean;
+        isPickup?: boolean;
+        isDestination?: boolean;
+        id?: string;
+      }>;
       
       if (stops && stops.length > 0) {
         // Snap stops to the nearest point on the route
@@ -405,6 +442,9 @@ export default function TransportMap({
             position: useSnapped ? closestPoint : stopLngLat,
             title: stop.nome,
             isTerminal: stop.isTerminal,
+            isPickup: stop.isPickup || false,  // ← ADD THIS
+            isDestination: stop.isDestination || false,  // ← ADD THIS
+            id: stop.id,  // ← ADD THIS for better matching
           };
         });
       } else {
@@ -418,27 +458,24 @@ export default function TransportMap({
         let borderColor = "white";
         let markerIcon = "";
 
-        // Check if this stop has special meaning
-        const matchingStop = stops?.find(s => 
-          Math.abs(s.latitude - stop.position[1]) < 0.001 && 
-          Math.abs(s.longitude - stop.position[0]) < 0.001
-        );
-
-        if (matchingStop?.isPickup) {
+        // Check flags directly from stop object
+        if (stop.isPickup) {
+          console.log('🟢 Rendering PICKUP marker for:', stop.title, 'at position:', stop.position);
           markerColor = "#10b981"; // Green for pickup
           markerSize = "20px";
           borderColor = "#ffffff";
-          markerIcon = "🟢";
-        } else if (matchingStop?.isDestination) {
+          markerIcon = "P"; // Use letter P instead of emoji
+        } else if (stop.isDestination) {
+          console.log('🔴 Rendering DESTINATION marker for:', stop.title, 'at position:', stop.position);
           markerColor = "#ef4444"; // Red for destination
           markerSize = "20px";
           borderColor = "#ffffff";
-          markerIcon = "🔴";
+          markerIcon = "D"; // Use letter D instead of emoji
         } else if (stop.isTerminal) {
           markerColor = "#1f2937"; // Black for terminals
           markerSize = "18px";
           borderColor = "#ffffff";
-          markerIcon = "🏁";
+          markerIcon = "T"; // Use letter T for terminal
         }
 
         const el = document.createElement("div");
@@ -453,25 +490,35 @@ export default function TransportMap({
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 10px;
+          font-size: 12px;
+          font-weight: bold;
+          color: white;
           position: relative;
         `;
 
         // Add icon if available
         if (markerIcon) {
-          el.innerHTML = markerIcon;
-          el.style.fontSize = "12px";
+          el.textContent = markerIcon;
         }
 
         // Create popup content
         let popupContent = `<strong>${stop.title}</strong>`;
-        if (matchingStop?.isPickup) {
+        if (stop.isPickup) {
           popupContent += `<br><span style="color: #10b981;">📍 Sua paragem de embarque</span>`;
-        } else if (matchingStop?.isDestination) {
+        } else if (stop.isDestination) {
           popupContent += `<br><span style="color: #ef4444;">🎯 Seu destino</span>`;
         } else if (stop.isTerminal) {
           popupContent += `<br><span style="color: #6b7280;">🏁 Terminal</span>`;
         }
+
+        console.log('Creating marker:', {
+          title: stop.title,
+          color: markerColor,
+          size: markerSize,
+          icon: markerIcon,
+          isPickup: stop.isPickup,
+          isDestination: stop.isDestination
+        });
 
         new maplibregl.Marker({ element: el })
           .setLngLat(stop.position as [number, number])
@@ -629,57 +676,6 @@ export default function TransportMap({
 
       // Start animation
       animateBus();
-
-      // Criar elemento HTML para o marcador da paragem (pickup)
-      const paragemEl = document.createElement("div");
-      paragemEl.className = "paragem-marker-container";
-      paragemEl.innerHTML = `
-        <div class="paragem-pulse pickup"></div>
-        <div class="paragem-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="16" cy="16" r="12" fill="#10b981" stroke="white" stroke-width="3"/>
-            <circle cx="16" cy="16" r="5" fill="white"/>
-            <text x="16" y="20" text-anchor="middle" fill="#10b981" font-size="12" font-weight="bold">P</text>
-          </svg>
-        </div>
-      `;
-
-      // Adicionar marcador da paragem (pickup)
-      const paragemMarker = new maplibregl.Marker({ element: paragemEl })
-        .setLngLat([paragemLng, paragemLat])
-        .setPopup(
-          new maplibregl.Popup({ offset: 16 }).setHTML(
-            `<strong>📍 ${paragemNome || "Sua Paragem"}</strong><br><span style="color: #10b981;">Embarque aqui</span>`
-          )
-        )
-        .addTo(map);
-
-      paragemMarkerRef.current = paragemMarker;
-
-      // Adicionar marcador do destino se fornecido
-      if (destinationLat && destinationLng) {
-        const destinationEl = document.createElement("div");
-        destinationEl.className = "destination-marker-container";
-        destinationEl.innerHTML = `
-          <div class="paragem-pulse destination"></div>
-          <div class="paragem-icon">
-            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="12" fill="#ef4444" stroke="white" stroke-width="3"/>
-              <circle cx="16" cy="16" r="5" fill="white"/>
-              <text x="16" y="20" text-anchor="middle" fill="#ef4444" font-size="12" font-weight="bold">D</text>
-            </svg>
-          </div>
-        `;
-
-        new maplibregl.Marker({ element: destinationEl })
-          .setLngLat([destinationLng, destinationLat])
-          .setPopup(
-            new maplibregl.Popup({ offset: 16 }).setHTML(
-              `<strong>🎯 ${destinationNome || "Seu Destino"}</strong><br><span style="color: #ef4444;">Desembarque aqui</span>`
-            )
-          )
-          .addTo(map);
-      }
 
       // Ajustar bounds para mostrar toda a rota
       const bounds = new maplibregl.LngLatBounds();

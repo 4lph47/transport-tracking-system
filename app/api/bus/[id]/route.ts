@@ -28,6 +28,28 @@ export async function GET(
       );
     }
 
+    // Mark pickup and destination stops if provided
+    if (paragemId && busData.stops) {
+      console.log('🔍 Marking stops - paragemId:', paragemId, 'destinationId:', destinationId);
+      console.log('🔍 Total stops:', busData.stops.length);
+      
+      busData.stops = busData.stops.map(stop => {
+        const isPickup = stop.id === paragemId;
+        const isDestination = destinationId ? stop.id === destinationId : false;
+        
+        if (isPickup) console.log('✅ Marked PICKUP stop:', stop.nome, stop.id);
+        if (isDestination) console.log('✅ Marked DESTINATION stop:', stop.nome, stop.id);
+        
+        return {
+          ...stop,
+          isPickup,
+          isDestination
+        };
+      }) as any; // Type assertion to allow dynamic properties
+      
+      console.log('🔍 Stops after marking:', (busData.stops as any[]).filter((s: any) => s.isPickup || s.isDestination));
+    }
+
     // If paragem and destination are provided, calculate journey details
     if (paragemId && destinationId) {
       const [pickupStop, destinationStop] = await Promise.all([
@@ -76,20 +98,20 @@ export async function GET(
         const timeToBus = Math.ceil(distanceToBus / 1000 / velocidade * 60); // minutes
         const totalTime = timeToBus + journeyTime;
 
-        // Add journey details to bus data
-        busData.journeyDistance = journeyDistance;
-        busData.journeyTime = journeyTime;
-        busData.totalTime = totalTime;
-        busData.fare = fare;
-        busData.userJourney = {
-          from: pickupStop.nome,
-          to: destinationStop.nome,
-          fromId: pickupStop.id,
-          toId: destinationStop.id
-        };
-        
-        // Update direction to show user journey
-        busData.direcao = `${pickupStop.nome} → ${destinationStop.nome}`;
+        // Add journey details to bus data (extend the type)
+        Object.assign(busData, {
+          journeyDistance,
+          journeyTime,
+          totalTime,
+          fare,
+          userJourney: {
+            from: pickupStop.nome,
+            to: destinationStop.nome,
+            fromId: pickupStop.id,
+            toId: destinationStop.id
+          },
+          direcao: `${pickupStop.nome} → ${destinationStop.nome}`
+        });
         
         console.log(`✅ Added journey details: ${journeyDistance}m, ${journeyTime}min, ${fare}MT`);
       }

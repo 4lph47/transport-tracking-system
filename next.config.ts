@@ -3,14 +3,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* Memory optimization settings */
   experimental: {
-    // Reduce memory usage
-    optimizePackageImports: ['@prisma/client'],
+    // Reduce memory usage during build
+    optimizePackageImports: ['@prisma/client', 'maplibre-gl'],
   },
   
   // Optimize production builds
   compress: true,
   
-  // Reduce bundle size
+  // Reduce build memory usage
   swcMinify: true,
   
   // Optimize images
@@ -20,8 +20,26 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96],
   },
   
-  // Reduce serverless function size
-  outputFileTracing: true,
+  // Webpack optimizations for memory
+  webpack: (config, { isServer }) => {
+    // Reduce memory usage
+    config.optimization = {
+      ...config.optimization,
+      moduleIds: 'deterministic',
+    };
+    
+    // Exclude large dependencies from server bundle
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    
+    return config;
+  },
 };
 
 export default nextConfig;

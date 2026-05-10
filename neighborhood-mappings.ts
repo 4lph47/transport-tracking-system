@@ -385,7 +385,8 @@ export const neighborhoodMappings = {
 // Helper function to get stops by neighborhood
 export function getStopsByNeighborhood(neighborhood: string, region: string): string[] {
   const mappings = neighborhoodMappings[region as 'Maputo' | 'Matola'];
-  return mappings?.[neighborhood] || [];
+  if (!mappings) return [];
+  return (mappings as Record<string, string[]>)[neighborhood] || [];
 }
 
 // Helper function to get all neighborhoods by region

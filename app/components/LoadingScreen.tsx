@@ -4,7 +4,7 @@ interface LoadingScreenProps {
 
 export default function LoadingScreen({ message = "Carregando..." }: LoadingScreenProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+    <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-center">
         {/* Animated Transport Icon */}
         <div className="relative mb-8">

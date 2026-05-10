@@ -149,16 +149,17 @@ model ViaParagem {
 // ============================================
 
 model Proprietario {
-  id            String   @id @default(cuid())
-  nome          String
-  bi            String   @unique
-  nacionalidade String
-  birthDate     DateTime
-  endereco      String
-  contacto1     Int
-  contacto2     Int?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  nome             String
+  bi               String   @unique
+  nacionalidade    String
+  birthDate        DateTime
+  endereco         String
+  contacto1        Int
+  contacto2        Int?
+  tipoProprietario String   @default("Indivíduo") // "Empresa" ou "Indivíduo"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relações
   transportes TransporteProprietario[]
@@ -179,8 +180,8 @@ model Transporte {
   updatedAt         DateTime @updatedAt
 
   // Relações
-  via           Via                      @relation(fields: [viaId], references: [id])
-  viaId         String
+  via           Via?                     @relation(fields: [viaId], references: [id])
+  viaId         String?
   proprietarios TransporteProprietario[]
   motorista     Motorista?               // Um transporte tem apenas UM motorista
   geoLocations  GeoLocation[]
@@ -218,6 +219,20 @@ model Motorista {
   email           String   @unique
   dataNascimento  DateTime
   endereco        String
+  foto            String?  // URL da foto do motorista
+  nacionalidade   String   @default("Moçambicana")
+  genero          String   @default("Masculino") // Masculino, Feminino
+  estadoCivil     String   @default("Solteiro") // Solteiro, Casado, Divorciado, Viúvo
+  numeroEmergencia String  // Telefone de emergência
+  contatoEmergencia String // Nome do contato de emergência
+  deficiencia     String?  // Descrição de deficiência (se houver)
+  dataEmissaoBI   DateTime
+  dataValidadeBI  DateTime
+  dataEmissaoCarta DateTime
+  dataValidadeCarta DateTime
+  categoriaCarta  String   @default("B") // A, B, C, D, E
+  experienciaAnos Int      @default(0) // Anos de experiência como motorista
+  observacoes     String?  @db.Text
   status          String   @default("ativo") // ativo, inativo, suspenso
   transporteId    String?  @unique           // Cada motorista só pode estar em UM transporte
   createdAt       DateTime @default(now())

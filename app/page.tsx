@@ -42,29 +42,13 @@ export default function LandingPage() {
     fetch('/api/startup')
       .then((res) => res.json())
       .then((data) => {
-        if (isMounted) {
-          console.log('Simulation initialized:', data);
+        if (isMounted && data.buses) {
+          setBuses(data.buses);
         }
+        setLoading(false);
       })
-      .catch((error) => {
-        console.error('Error initializing simulation:', error);
-      });
-
-    // Fetch all buses from API (ONCE on load)
-    fetch('/api/buses')
-      .then((res) => res.json())
-      .then((data) => {
+      .catch(() => {
         if (isMounted) {
-          console.log('Fetched buses:', data);
-          if (data.buses) {
-            setBuses(data.buses);
-          }
-          setLoading(false);
-        }
-      })
-      .catch((error) => {
-        if (isMounted) {
-          console.error('Error fetching buses:', error);
           setLoading(false);
         }
       });
@@ -74,28 +58,21 @@ export default function LandingPage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           if (isMounted) {
-            const userLng = position.coords.longitude;
-            const userLat = position.coords.latitude;
-            console.log('User location:', userLat, userLng);
-            setUserLocation([userLng, userLat]);
+            setUserLocation([position.coords.longitude, position.coords.latitude]);
           }
         },
-        (error) => {
+        () => {
           if (isMounted) {
-            console.log('Could not get user location:', error.message);
-            // Default to Maputo center if geolocation fails
             setUserLocation([32.5892, -25.9655]);
           }
         }
       );
     } else {
-      // Geolocation not supported, use default
       if (isMounted) {
         setUserLocation([32.5892, -25.9655]);
       }
     }
 
-    // Cleanup
     return () => {
       isMounted = false;
     };
@@ -108,10 +85,12 @@ export default function LandingPage() {
     const map = new maplibregl.Map({
       container: mapRef.current,
       style: 'https://tiles.openfreemap.org/styles/liberty',
-      center: [32.5892, -25.9655], // Maputo center
+      center: [32.5892, -25.9655],
       zoom: 12,
       pitch: 45,
       bearing: 0,
+      maxPitch: 60,
+      antialias: false, // Disable for better performance
     });
 
     mapInstanceRef.current = map;
@@ -200,38 +179,23 @@ export default function LandingPage() {
 
     // If no route path, skip
     if (!bus.routePath || bus.routePath.length === 0) {
-      console.log('No route path for bus:', bus.matricula);
       return;
     }
-
-    console.log('Drawing route for bus:', bus.matricula, 'with', bus.routePath.length, 'waypoints');
 
     // Use OSRM to get road-following route
     const waypointsString = bus.routePath.map(w => `${w[0]},${w[1]}`).join(';');
     const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${waypointsString}?overview=full&geometries=geojson`;
 
     fetch(osrmUrl)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`OSRM returned status ${response.status}`);
-        }
-        return response.json();
-      })
+      .then(response => response.ok ? response.json() : null)
       .then(data => {
-        if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-          console.warn('OSRM failed, using direct waypoints');
+        if (data?.code === 'Ok' && data.routes?.[0]?.geometry) {
+          drawRoute(data.routes[0].geometry.coordinates);
+        } else {
           drawRoute(bus.routePath);
-          return;
         }
-
-        // Use the route geometry from OSRM (follows roads)
-        const routeGeometry = data.routes[0].geometry;
-        console.log('✓ OSRM route received with', routeGeometry.coordinates.length, 'coordinates');
-        drawRoute(routeGeometry.coordinates);
       })
-      .catch(error => {
-        console.error('❌ Error fetching route from OSRM:', error);
-        console.log('Using waypoints as fallback');
+      .catch(() => {
         drawRoute(bus.routePath);
       });
 
@@ -272,27 +236,21 @@ export default function LandingPage() {
         },
       });
 
-      // Add stop markers
+      // Add stop markers - SIMPLIFIED
       if (bus.stops && bus.stops.length > 0) {
         bus.stops.forEach((stop) => {
           const el = document.createElement('div');
           el.style.cssText = `
-            width: ${stop.isTerminal ? '18px' : '14px'};
-            height: ${stop.isTerminal ? '18px' : '14px'};
+            width: ${stop.isTerminal ? '16px' : '12px'};
+            height: ${stop.isTerminal ? '16px' : '12px'};
             background: ${stop.isTerminal ? '#1f2937' : '#6b7280'};
-            border: 3px solid white;
+            border: 2px solid white;
             border-radius: 50%;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
           `;
 
           const marker = new maplibregl.Marker({ element: el })
-            .setLngLat([stop.longitude, stop.latitude])
-            .setPopup(
-              new maplibregl.Popup({ offset: 15 }).setHTML(
-                `<strong>${stop.nome}</strong><br><span style="color: #6b7280; font-size: 12px;">${stop.isTerminal ? 'Terminal' : 'Paragem'}</span>`
-              )
-            );
+            .setLngLat([stop.longitude, stop.latitude]);
           
           if (mapInstanceRef.current) {
             marker.addTo(mapInstanceRef.current);
@@ -302,24 +260,20 @@ export default function LandingPage() {
         });
       }
 
-      // Add user location marker
+      // Add user location marker - SIMPLIFIED
       if (userLocation) {
         const userEl = document.createElement('div');
-        userEl.className = 'user-location-marker';
-        userEl.innerHTML = `
-          <div style="position: relative; width: 32px; height: 32px;">
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; opacity: 0.3; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
-          </div>
+        userEl.style.cssText = `
+          width: 20px;
+          height: 20px;
+          background: #3b82f6;
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         `;
 
         const userMarker = new maplibregl.Marker({ element: userEl })
-          .setLngLat(userLocation)
-          .setPopup(
-            new maplibregl.Popup({ offset: 16 }).setHTML(
-              '<strong>Sua Localização</strong>'
-            )
-          );
+          .setLngLat(userLocation);
         
         if (mapInstanceRef.current) {
           userMarker.addTo(mapInstanceRef.current);
@@ -368,6 +322,12 @@ export default function LandingPage() {
       // Remove markers for buses that no longer exist
       busMarkersRef.current.forEach((marker, busId) => {
         if (!currentBusIds.has(busId)) {
+          const el = marker.getElement();
+          if (el) {
+            // Remove event listeners to prevent memory leaks
+            const newEl = el.cloneNode(true);
+            el.parentNode?.replaceChild(newEl, el);
+          }
           marker.remove();
           busMarkersRef.current.delete(busId);
         }
@@ -395,50 +355,36 @@ export default function LandingPage() {
           // Don't update popup - it causes flickering
           // Popup content is set once when marker is created
         } else {
-          // Create new marker only if it doesn't exist
+          // Create new marker only if it doesn't exist - SIMPLIFIED for memory
           const el = document.createElement('div');
           el.className = 'bus-marker';
-          el.innerHTML = `
-            <svg width="32" height="38" viewBox="0 0 32 38" style="display: block; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); cursor: pointer;">
-              <defs>
-                <linearGradient id="busGrad${bus.id}" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" style="stop-color:#3b82f6"/>
-                  <stop offset="100%" style="stop-color:#1e40af"/>
-                </linearGradient>
-              </defs>
-              <rect x="6" y="10" width="20" height="22" rx="1.5" fill="url(#busGrad${bus.id})" stroke="#0a1f5c" stroke-width="1"/>
-              <rect x="8" y="8" width="16" height="3" rx="0.5" fill="#1e3a8a"/>
-              <rect x="8" y="12" width="16" height="5" rx="0.5" fill="#e0f2fe" opacity="0.8"/>
-              <rect x="7" y="18" width="4" height="4" rx="0.3" fill="#dbeafe" opacity="0.7"/>
-              <rect x="7" y="24" width="4" height="4" rx="0.3" fill="#dbeafe" opacity="0.7"/>
-              <rect x="21" y="18" width="4" height="4" rx="0.3" fill="#bfdbfe" opacity="0.6"/>
-              <rect x="21" y="24" width="4" height="4" rx="0.3" fill="#bfdbfe" opacity="0.6"/>
-              <circle cx="11" cy="7" r="2" fill="#fef08a" stroke="#fff" stroke-width="1"/>
-              <circle cx="21" cy="7" r="2" fill="#fef08a" stroke="#fff" stroke-width="1"/>
-              <circle cx="10" cy="33" r="2.5" fill="#1f2937"/>
-              <circle cx="22" cy="33" r="2.5" fill="#1f2937"/>
-              <circle cx="11" cy="34" r="1" fill="#ef4444"/>
-              <circle cx="21" cy="34" r="1" fill="#ef4444"/>
-            </svg>
+          el.style.cssText = `
+            width: 28px;
+            height: 28px;
+            background: #3b82f6;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
           `;
+          el.textContent = '🚌';
 
           // Add click handler to show route
-          el.addEventListener('click', () => {
-            console.log('Bus clicked:', bus.id, bus.matricula);
+          const clickHandler = () => {
             setSelectedBusId(bus.id);
             showBusRoute(bus);
-          });
+          };
+          el.addEventListener('click', clickHandler);
 
           const marker = new maplibregl.Marker({ element: el })
             .setLngLat([bus.longitude, bus.latitude])
-            .setPopup(
-              new maplibregl.Popup({ offset: 20, closeButton: false }).setHTML(
-                `<div style="color: #000;"><strong>${bus.matricula}</strong><br>${bus.via}<br><span style="color: #10b981;">${bus.status}</span></div>`
-              )
-            )
             .addTo(map);
 
-          // Store marker reference for updates
+          // Store marker reference and cleanup function
           busMarkersRef.current.set(bus.id, marker);
         }
       });
@@ -447,31 +393,6 @@ export default function LandingPage() {
 
   return (
     <>
-      <style jsx global>{`
-        .maplibregl-map {
-          height: 100%;
-          width: 100%;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        .maplibregl-popup-content {
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          padding: 12px 16px;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-
-        .maplibregl-popup-content strong {
-          color: #1f2937;
-          font-weight: 600;
-        }
-
-        .maplibregl-ctrl-group {
-          border-radius: 6px !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-        }
-      `}</style>
 
       <div className="relative h-screen w-screen overflow-hidden">
         {/* Loading state */}
@@ -543,6 +464,18 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+
+        {/* Admin button at top right */}
+        <button
+          onClick={() => router.push("/admin")}
+          className="absolute top-6 right-6 z-[1000] bg-slate-800/95 backdrop-blur-sm hover:bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center space-x-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="text-sm font-medium">Admin</span>
+        </button>
 
         {/* Bus count indicator - REMOVED, now integrated in logo */}
       </div>
