@@ -98,8 +98,20 @@ export async function POST(request: NextRequest) {
 
 // Reuse existing USSD logic
 async function handleUSSD(sessionId: string, phoneNumber: string, text: string): Promise<string> {
-  // Split user input by * to track navigation
-  const inputs = text === '' ? [] : text.split('*');
+  // Split user input by * to track navigation and pagination
+  const rawInputs = text === '' ? [] : text.split('*');
+  const inputs: string[] = [];
+  const pages: number[] = [];
+  let currPg = 0;
+  for (const val of rawInputs) {
+    if (val === '98') currPg++;
+    else if (val === '99') currPg = Math.max(0, currPg - 1);
+    else {
+      inputs.push(val);
+      pages.push(currPg);
+      currPg = 0;
+    }
+  }
   const level = inputs.length;
 
   // LEVEL 0: Main Menu (first interaction)
@@ -109,7 +121,8 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 2. Procurar Rotas
 3. Paragens Próximas
 4. Calcular Tarifa
-5. Ajuda`;
+5. Pagamento
+6. Ajuda`;
   }
 
   // LEVEL 1: Main menu selection
@@ -124,15 +137,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
           return `END Nenhuma localização disponível no momento.`;
         }
         
-        let locationMenu = `CON Onde você está agora?\n`;
-        availableLocations.slice(0, 7).forEach((loc, i) => {
-          locationMenu += `${i + 1}. ${loc}\n`;
-        });
-        if (availableLocations.length > 7) {
-          locationMenu += `8. Outro local\n`;
-        }
-        locationMenu += `0. Voltar`;
-        return locationMenu;
+        return paginateList("Onde você está agora?", availableLocations, currPg, 6);
 
       case '2':
         // Search routes - Get available origins from database
@@ -141,15 +146,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
           return `END Nenhuma rota disponível no momento.`;
         }
         
-        let originMenu = `CON Procurar Rotas - Escolha origem:\n`;
-        availableOrigins.slice(0, 8).forEach((origin, i) => {
-          originMenu += `${i + 1}. ${origin}\n`;
-        });
-        if (availableOrigins.length > 8) {
-          originMenu += `9. Outro (digitar nome)\n`;
-        }
-        originMenu += `0. Voltar`;
-        return originMenu;
+        return paginateList("Procurar Rotas - Escolha origem:", availableOrigins, currPg, 6);
 
       case '3':
         // Nearest stops - Get available areas from database
@@ -158,15 +155,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
           return `END Nenhuma paragem disponível no momento.`;
         }
         
-        let areaMenu = `CON Paragens Próximas - Escolha área:\n`;
-        availableAreas.slice(0, 8).forEach((area, i) => {
-          areaMenu += `${i + 1}. ${area}\n`;
-        });
-        if (availableAreas.length > 8) {
-          areaMenu += `9. Outro (digitar nome)\n`;
-        }
-        areaMenu += `0. Voltar`;
-        return areaMenu;
+        return paginateList("Paragens Próximas - Escolha área:", availableAreas, currPg, 6);
 
       case '4':
         // Calculate fare - Get available locations from database
@@ -175,15 +164,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
           return `END Nenhuma localização disponível no momento.`;
         }
         
-        let fareMenu = `CON Calcular Tarifa\nEscolha sua origem:\n`;
-        fareLocations.slice(0, 7).forEach((loc, i) => {
-          fareMenu += `${i + 1}. ${loc}\n`;
-        });
-        if (fareLocations.length > 7) {
-          fareMenu += `8. Outro\n`;
-        }
-        fareMenu += `0. Voltar`;
-        return fareMenu;
+        return paginateList("Calcular Tarifa - Escolha origem:", fareLocations, currPg, 6);
 
       
       case '5':
@@ -192,15 +173,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
           return `END Nenhuma localização disponível no momento.`;
         }
         
-        let payMenu = `CON Pagamento\nEscolha sua origem:\n`;
-        payLocations.slice(0, 7).forEach((loc, i) => {
-          payMenu += `${i + 1}. ${loc}\n`;
-        });
-        if (payLocations.length > 7) {
-          payMenu += `8. Outro\n`;
-        }
-        payMenu += `0. Voltar`;
-        return payMenu;
+        return paginateList("Pagamento - Escolha origem:", payLocations, currPg, 6);
 
       case '6':
         return `END Sistema de Transportes - Ajuda
@@ -232,11 +205,8 @@ Suporte: info@transporte.mz`;
 
       const locations = await getAvailableLocations();
       
-      if (userInput === '8' || parseInt(userInput) > locations.slice(0, 7).length) {
-        return `CON Digite sua localização:`;
-      }
-
-      const locationIndex = parseInt(userInput) - 1;
+      const locationIndex = pages[1] * 6 + parseInt(userInput) - 1;
+      if (locationIndex >= locations.length) return `END Opção inválida.`;
       if (locationIndex < 0 || locationIndex >= locations.length) {
         return `END Opção inválida.`;
       }
@@ -361,11 +331,8 @@ Tente outro nome de local.`;
 
       const locations = await getAvailableLocations();
       
-      if (userInput === '8' || parseInt(userInput) > locations.slice(0, 7).length) {
-        return `CON Digite a origem:`;
-      }
-
-      const locationIndex = parseInt(userInput) - 1;
+      const locationIndex = pages[1] * 6 + parseInt(userInput) - 1;
+      if (locationIndex >= locations.length) return `END Opção inválida.`;
       if (locationIndex < 0 || locationIndex >= locations.length) {
         return `END Opção inválida.`;
       }
@@ -402,11 +369,8 @@ Tente outro nome de local.`;
 
       const locations = await getAvailableLocations();
       
-      if (userInput === '8' || parseInt(userInput) > locations.slice(0, 7).length) {
-        return `CON Digite a origem:`;
-      }
-
-      const locationIndex = parseInt(userInput) - 1;
+      const locationIndex = pages[1] * 6 + parseInt(userInput) - 1;
+      if (locationIndex >= locations.length) return `END Opção inválida.`;
       if (locationIndex < 0 || locationIndex >= locations.length) {
         return `END Opção inválida.`;
       }
@@ -419,15 +383,7 @@ Tente outro nome de local.`;
         return `END Nenhum destino disponível de ${origin}.`;
       }
       
-      let destMenu = `CON Pagamento: ${origin}\nPara onde?\n`;
-      destinations.slice(0, 7).forEach((dest, i) => {
-        destMenu += `${i + 1}. ${dest}\n`;
-      });
-      if (destinations.length > 7) {
-        destMenu += `8. Outro\n`;
-      }
-      destMenu += `0. Voltar`;
-      return destMenu;
+      return paginateList(`Pagamento: ${origin} - Para onde?`, destinations, currPg, 6);
     }
 
     // Option 5: Saved routes submenu (EXISTING)
@@ -577,11 +533,8 @@ Voce sera notificado via SMS!`;
       
       const destinations = await getAvailableDestinations(origin);
       
-      if (thirdInput === '8' || parseInt(thirdInput) > destinations.slice(0, 7).length) {
-        return `CON Digite o destino:`;
-      }
-
-      const destIndex = parseInt(thirdInput) - 1;
+      const destIndex = pages[2] * 6 + parseInt(thirdInput) - 1;
+      if (destIndex >= destinations.length) return `END Opção inválida.`;
       if (destIndex < 0 || destIndex >= destinations.length) {
         return `END Opção inválida.`;
       }
@@ -622,11 +575,8 @@ ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
       const allDestinations = await getAvailableDestinations(origin);
       const destinations = allDestinations.filter(d => d !== origin);
       
-      if (thirdInput === '8' || parseInt(thirdInput) > destinations.slice(0, 7).length) {
-        return `CON Digite o destino:`;
-      }
-
-      const destIndex = parseInt(thirdInput) - 1;
+      const destIndex = pages[2] * 6 + parseInt(thirdInput) - 1;
+      if (destIndex >= destinations.length) return `END Opção inválida.`;
       if (destIndex < 0 || destIndex >= destinations.length) {
         return `END Opção inválida.`;
       }
