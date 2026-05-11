@@ -773,7 +773,6 @@ async function getAvailableLocations(): Promise<string[]> {
     
     routes.forEach(route => {
       if (route.terminalPartida) locations.add(route.terminalPartida);
-      if (route.terminalChegada) locations.add(route.terminalChegada);
     });
 
     return Array.from(locations).sort();
