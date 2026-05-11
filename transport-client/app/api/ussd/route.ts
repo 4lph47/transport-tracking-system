@@ -64,10 +64,10 @@ function paginateList(title: string, list: string[], currentPage: number, itemsP
   });
   
   if (currentPage < totalPages - 1) {
-    menu += `98. Proximo\n`;
+    menu += `7. Proximo\n`;
   }
   if (currentPage > 0) {
-    menu += `99. Anterior\n`;
+    menu += `8. Anterior\n`;
   }
   menu += `0. Voltar`;
   return menu;
@@ -80,8 +80,8 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
   const pages: number[] = [];
   let currPg = 0;
   for (const val of rawInputs) {
-    if (val === '98') currPg++;
-    else if (val === '99') currPg = Math.max(0, currPg - 1);
+    if (val === '7') currPg++;
+    else if (val === '8') currPg = Math.max(0, currPg - 1);
     else {
       inputs.push(val);
       pages.push(currPg);
