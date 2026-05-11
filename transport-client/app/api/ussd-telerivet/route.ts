@@ -448,6 +448,9 @@ Tente outro nome de local.`;
         console.error('Error creating mission:', error);
       }
 
+      const smsMsg = `Autocarro: ${transportInfo.busId}. Tempo ate chegada: ${transportInfo.timeUntilBusArrives}min. Tempo de viagem: ${transportInfo.travelTime}min. Tarifa: ${transportInfo.fare}MT.`;
+      try { await sendSMS(phoneNumber, smsMsg); } catch (e) { console.error('SMS Error:', e); }
+
       return `END INFORMACAO DE TRANSPORTE
 
 AUTOCARRO: ${transportInfo.busId}
@@ -525,7 +528,7 @@ Voce sera notificado via SMS!`;
       }
 
       const locations = await getAvailableLocations();
-      const origin = locations[parseInt(secondChoice) - 1];
+      const origin = locations[pages[1] * 6 + parseInt(secondChoice) - 1];
       
       if (!origin) {
         return `END Origem inválida.`;
@@ -568,7 +571,7 @@ ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
       }
 
       const locations = await getAvailableLocations();
-      const origin = locations[parseInt(secondChoice) - 1];
+      const origin = locations[pages[1] * 6 + parseInt(secondChoice) - 1];
       
       if (!origin) return `END Origem inválida.`;
 
@@ -593,7 +596,7 @@ ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
         return await handleUSSD(sessionId, phoneNumber, '');
       }
       
-      const routeIndex = parseInt(thirdInput) - 1;
+      const routeIndex = pages[2] * 6 + parseInt(thirdInput) - 1;
       
       if (isNaN(routeIndex) || routeIndex < 0) {
         return `END Opção inválida.`;
@@ -601,7 +604,7 @@ ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
 
       // Get origin from dynamic list (FIXED: was using hardcoded list)
       const locations = await getAvailableOrigins();
-      const locationIndex = parseInt(secondChoice) - 1;
+      const locationIndex = pages[1] * 6 + parseInt(secondChoice) - 1;
       
       if (isNaN(locationIndex) || locationIndex < 0 || locationIndex >= locations.length) {
         return `END Opção inválida.`;
@@ -634,7 +637,7 @@ Obrigado por usar nosso servico!`;
         return await handleUSSD(sessionId, phoneNumber, '');
       }
       
-      const stopIndex = parseInt(thirdInput) - 1;
+      const stopIndex = pages[2] * 6 + parseInt(thirdInput) - 1;
       
       if (isNaN(stopIndex) || stopIndex < 0) {
         return `END Opção inválida.`;
@@ -642,7 +645,7 @@ Obrigado por usar nosso servico!`;
 
       // Get area from dynamic list (FIXED: was using hardcoded list)
       const areas = await getAvailableAreas();
-      const areaIndex = parseInt(secondChoice) - 1;
+      const areaIndex = pages[1] * 6 + parseInt(secondChoice) - 1;
       
       if (isNaN(areaIndex) || areaIndex < 0 || areaIndex >= areas.length) {
         return `END Opção inválida.`;
@@ -679,10 +682,10 @@ Obrigado por usar nosso servico!`;
     }
 
     const locations = await getAvailableLocations();
-    const origin = locations[parseInt(secondChoice) - 1];
+    const origin = locations[pages[1] * 6 + parseInt(secondChoice) - 1];
     const allDestinations = await getAvailableDestinations(origin);
     const destinations = allDestinations.filter(d => d !== origin);
-    const destination = destinations[parseInt(thirdInput) - 1];
+    const destination = destinations[pages[2] * 6 + parseInt(thirdInput) - 1];
     
     const transportInfo = await findTransportInfo(origin, destination);
     
@@ -726,6 +729,8 @@ Detalhes enviados por SMS.`;
 
       const route = routes[routeIndex];
       
+      const rMsg = `Rota ${route.name}: ${route.origin} - ${route.destination}. Tarifa: ${route.fare || '20-30'}MT.`;
+      try { await sendSMS(phoneNumber, rMsg); } catch (e) {}
       return `END ${route.name}
 
 De: ${route.origin}
@@ -757,6 +762,8 @@ Obrigado por usar nosso servico!`;
 
       const stop = stops[stopIndex];
       
+      const sMsg = `Paragem ${stop.name}. Rotas: ${stop.routes ? stop.routes : 'N/A'}`; 
+      try { await sendSMS(phoneNumber, sMsg); } catch (e) {}
       return `END ${stop.name}
 
 ${stop.routes ? `Rotas: ${stop.routes}` : 'Sem informacao de rotas'}
@@ -774,6 +781,11 @@ async function getAvailableLocations(): Promise<string[]> {
   try {
     // Get unique terminal names from routes
     const routes = await prisma.via.findMany({
+      where: {
+        transportes: {
+          some: {}
+        }
+      },
       select: {
         terminalPartida: true,
         terminalChegada: true,
@@ -799,6 +811,11 @@ async function getAvailableLocations(): Promise<string[]> {
 async function getAvailableOrigins(): Promise<string[]> {
   try {
     const routes = await prisma.via.findMany({
+      where: {
+        transportes: {
+          some: {}
+        }
+      },
       select: {
         terminalPartida: true,
       },
@@ -852,9 +869,16 @@ async function getAvailableDestinations(origin: string): Promise<string[]> {
   try {
     const routes = await prisma.via.findMany({
       where: {
-        OR: [
-          { terminalPartida: { contains: origin } },
-          { nome: { contains: origin } }
+        AND: [
+          {
+            OR: [
+              { terminalPartida: { contains: origin } },
+              { nome: { contains: origin } }
+            ]
+          },
+          {
+            transportes: { some: {} }
+          }
         ]
       },
       select: {
@@ -1482,3 +1506,6 @@ async function createMissionForUser(phoneNumber: string, from: string, to: strin
     throw error;
   }
 }
+
+// If Pagamento Level 4 is missing, let's append it manually inside level === 4 block.
+// Wait, doing this via regex is safer. Let's just write the modified content back.

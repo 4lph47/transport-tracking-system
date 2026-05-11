@@ -16,11 +16,16 @@ export async function sendSMS(to: string, message: string) {
     // Garantir que o número tem o formato correto (+258...)
     const phoneNumber = to.startsWith('+') ? to : `+258${to.replace(/^0/, '')}`;
 
-    const result = await sms.send({
+    const sendOptions: any = {
       to: [phoneNumber],
       message,
-      from: process.env.AFRICASTALKING_SHORTCODE,
-    });
+    };
+    
+    if (process.env.AFRICASTALKING_SHORTCODE) {
+      sendOptions.from = process.env.AFRICASTALKING_SHORTCODE;
+    }
+
+    const result = await sms.send(sendOptions);
 
     console.log(`✅ SMS enviado para ${phoneNumber}:`, result);
     return result;
