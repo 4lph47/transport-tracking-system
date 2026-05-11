@@ -4,39 +4,26 @@
 const http = require('http');
 
 async function testUSSD(text, description) {
-  return new Promise((resolve, reject) => {
-    const postData = `sessionId=test${Date.now()}&serviceCode=*384*123%23&phoneNumber=%2B258123456789&text=${encodeURIComponent(text)}`;
-    
-    const options = {
-      hostname: 'localhost',
-      port: 3000,
-      path: '/api/ussd',
+  const formData = new URLSearchParams();
+  formData.append('sessionId', `test${Date.now()}`);
+  formData.append('serviceCode', '*384*123#');
+  formData.append('phoneNumber', '+258123456789');
+  formData.append('text', text);
+
+  try {
+    const response = await fetch('http://localhost:3001/api/ussd', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    };
-
-    const req = http.request(options, (res) => {
-      let data = '';
-      
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-      
-      res.on('end', () => {
-        resolve({ text, description, response: data });
-      });
+      },
+      body: formData.toString()
     });
 
-    req.on('error', (error) => {
-      reject({ text, description, error });
-    });
-
-    req.write(postData);
-    req.end();
-  });
+    const data = await response.text();
+    return { text, description, response: data };
+  } catch (error) {
+    throw error;
+  }
 }
 
 async function runTests() {
@@ -109,8 +96,8 @@ async function runTests() {
       await new Promise(resolve => setTimeout(resolve, 200));
       
     } catch (error) {
-      results.errors.push({ test, error });
-      console.log(`   💥 ERROR: ${error.message || error}`);
+      results.errors.push({ test, error: error.error || error });
+      console.log(`   💥 ERROR: ${(error.error && error.error.message) || error.message || error}`);
     }
   }
 
