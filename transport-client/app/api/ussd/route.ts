@@ -1066,6 +1066,8 @@ async function findTransportInfo(from: string, to: string) {
     let transport = null;
     let origemParagem = null;
     let destinoParagem = null;
+    let origemIndex = -1;
+    let destinoIndex = -1;
 
     for (const t of transports) {
       if (!t.via) continue;
@@ -1077,6 +1079,8 @@ async function findTransportInfo(from: string, to: string) {
         transport = t;
         origemParagem = via.paragens[oIdx].paragem;
         destinoParagem = via.paragens[dIdx].paragem;
+        origemIndex = oIdx;
+        destinoIndex = dIdx;
         break;
       }
     }
