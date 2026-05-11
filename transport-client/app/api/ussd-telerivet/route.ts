@@ -1069,51 +1069,17 @@ async function findNearestStop(locationName: string) {
 // NEW: Find transport info (routes, ETA, fare) - SIMPLIFIED for USSD performance
 async function findTransportInfo(from: string, to: string) {
   try {
-    console.log(`\n🔍 USSD: Finding transport from "${from}" to "${to}"`);
+    console.log(`
+🔍 USSD: Finding transport from "${from}" to "${to}"`);
 
-    // Find origem paragem
-    const origemParagem = await prisma.paragem.findFirst({
-      where: {
-        nome: {
-          contains: from,
-          mode: 'insensitive'
-        }
-      }
-    });
-
-    if (!origemParagem) {
-      console.log(`❌ Origem paragem not found: ${from}`);
-      return null;
-    }
-
-    // Find destino paragem
-    const destinoParagem = await prisma.paragem.findFirst({
-      where: {
-        nome: {
-          contains: to,
-          mode: 'insensitive'
-        }
-      }
-    });
-
-    if (!destinoParagem) {
-      console.log(`❌ Destino paragem not found: ${to}`);
-      return null;
-    }
-
-    console.log(`✅ Found origem: ${origemParagem.nome}`);
-    console.log(`✅ Found destino: ${destinoParagem.nome}`);
-
-    // Simplified: Find transports on vias that have the origem stop
-    // Then check in code if they also have destino
+    // Find transports on vias that have BOTH origem and destino stops by name
     const transports = await prisma.transporte.findMany({
       where: {
         via: {
-          paragens: {
-            some: {
-              paragemId: origemParagem.id
-            }
-          }
+          AND: [
+            { paragens: { some: { paragem: { nome: { contains: from, mode: 'insensitive' } } } } },
+            { paragens: { some: { paragem: { nome: { contains: to, mode: 'insensitive' } } } } }
+          ]
         }
       },
       include: {
@@ -1139,28 +1105,27 @@ async function findTransportInfo(from: string, to: string) {
       take: 10, // Limit for performance
     });
 
-    console.log(`📊 Found ${transports.length} transports on vias with origem`);
+    console.log(`📊 Found ${transports.length} transports on vias with origem and destino`);
 
-    // Find first transport that also has destino in correct order
     let transport = null;
-    let origemIndex = -1;
-    let destinoIndex = -1;
+    let origemParagem = null;
+    let destinoParagem = null;
 
     for (const t of transports) {
       if (!t.via) continue;
       const { via } = t;
-      const oIdx = via.paragens.findIndex((vp) => vp.paragem.id === origemParagem.id);
-      const dIdx = via.paragens.findIndex((vp) => vp.paragem.id === destinoParagem.id);
+      const oIdx = via.paragens.findIndex((vp) => vp.paragem.nome.toLowerCase().includes(from.toLowerCase()));
+      const dIdx = via.paragens.findIndex((vp) => vp.paragem.nome.toLowerCase().includes(to.toLowerCase()));
 
       if (oIdx !== -1 && dIdx !== -1 && oIdx < dIdx) {
         transport = t;
-        origemIndex = oIdx;
-        destinoIndex = dIdx;
+        origemParagem = via.paragens[oIdx].paragem;
+        destinoParagem = via.paragens[dIdx].paragem;
         break;
       }
     }
 
-    if (!transport) {
+    if (!transport || !origemParagem || !destinoParagem) {
       console.log(`❌ No transport found with correct route order`);
       return null;
     }
