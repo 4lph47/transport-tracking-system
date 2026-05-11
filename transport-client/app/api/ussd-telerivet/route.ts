@@ -97,6 +97,26 @@ export async function POST(request: NextRequest) {
 }
 
 // Reuse existing USSD logic
+function paginateList(title: string, list: string[], currentPage: number, itemsPerPage: number = 6) {
+  const totalPages = Math.ceil(list.length / itemsPerPage);
+  const start = currentPage * itemsPerPage;
+  const pageItems = list.slice(start, start + itemsPerPage);
+  
+  let menu = `CON ${title}\n`;
+  pageItems.forEach((item, i) => {
+    menu += `${i + 1}. ${item}\n`;
+  });
+  
+  if (currentPage < totalPages - 1) {
+    menu += `98. Proximo\n`;
+  }
+  if (currentPage > 0) {
+    menu += `99. Anterior\n`;
+  }
+  menu += `0. Voltar`;
+  return menu;
+}
+
 async function handleUSSD(sessionId: string, phoneNumber: string, text: string): Promise<string> {
   // Split user input by * to track navigation and pagination
   const rawInputs = text === '' ? [] : text.split('*');
