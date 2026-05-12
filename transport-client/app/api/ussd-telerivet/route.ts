@@ -467,11 +467,11 @@ Status: ${locationInfo}`;
       }
 
       const locations = await getAvailableLocations();
-      const currentLocation = locations[parseInt(secondChoice) - 1];
-      
-      if (!currentLocation) {
-        return `END Localização inválida.`;
+      const locationIndex = pages[1] * 6 + parseInt(secondChoice) - 1;
+      if (isNaN(locationIndex) || locationIndex < 0 || locationIndex >= locations.length) {
+        return `END Opção inválida.`;
       }
+      const currentLocation = locations[locationIndex];
       
       const destinations = await getAvailableDestinations(currentLocation);
       

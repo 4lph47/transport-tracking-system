@@ -222,17 +222,11 @@ Suporte: info@transporte.mz`;
       const locations = await getAvailableOrigins();
       let origin: string;
 
-      if (userInput === '9' || parseInt(userInput) > locations.slice(0, 8).length) {
-        // User wants to type custom location
-        return `CON Digite o nome da origem:`;
-      } else {
-        const locationIndex = parseInt(userInput) - 1;
-        if (locationIndex >= 0 && locationIndex < locations.length) {
-          origin = locations[locationIndex];
-        } else {
-          return `END Opção inválida.`;
-        }
+      const locationIndex = pages[1] * 6 + parseInt(userInput) - 1;
+      if (isNaN(locationIndex) || locationIndex < 0 || locationIndex >= locations.length) {
+        return `END Opção inválida.`;
       }
+      origin = locations[locationIndex];
 
       // Search routes from database
       const routes = await searchRoutes(origin);
@@ -243,18 +237,8 @@ Suporte: info@transporte.mz`;
 Tente outro nome de local.`;
       }
 
-      // Show up to 9 routes (max for single digit selection)
-      let response = `CON Rotas de ${origin}:\n`;
-      routes.slice(0, 9).forEach((route, i) => {
-        response += `${i + 1}. ${route.destination}\n`;
-      });
-      
-      if (routes.length > 9) {
-        response += `\nMostrando 9 de ${routes.length} rotas\n`;
-      }
-      
-      response += `0. Voltar ao menu`;
-      return response;
+      const routeDestinations = routes.map(r => r.destination || 'Desconhecido');
+      return paginateList(`Rotas de ${origin}:`, routeDestinations, currPg, 6);
     }
 
     // Option 3: Nearest stops (EXISTING)
@@ -268,17 +252,11 @@ Tente outro nome de local.`;
       const areas = await getAvailableAreas();
       let area: string;
 
-      if (userInput === '9' || parseInt(userInput) > areas.slice(0, 8).length) {
-        // User wants to type custom area
-        return `CON Digite o nome da área:`;
-      } else {
-        const areaIndex = parseInt(userInput) - 1;
-        if (areaIndex >= 0 && areaIndex < areas.length) {
-          area = areas[areaIndex];
-        } else {
-          return `END Opção inválida.`;
-        }
+      const areaIndex = pages[1] * 6 + parseInt(userInput) - 1;
+      if (isNaN(areaIndex) || areaIndex < 0 || areaIndex >= areas.length) {
+        return `END Opção inválida.`;
       }
+      area = areas[areaIndex];
       
       const stops = await searchStops(area);
 
@@ -322,15 +300,7 @@ Tente outro nome de local.`;
         return `END Nenhum destino disponível de ${origin}.`;
       }
       
-      let destMenu = `CON De: ${origin}\n\nPara onde?\n`;
-      destinations.slice(0, 7).forEach((dest, i) => {
-        destMenu += `${i + 1}. ${dest}\n`;
-      });
-      if (destinations.length > 7) {
-        destMenu += `8. Outro\n`;
-      }
-      destMenu += `0. Voltar`;
-      return destMenu;
+      return paginateList(`Calcular Tarifa\nDe: ${origin}\nPara onde?`, destinations, currPg, 6);
     }
 
 
@@ -423,11 +393,11 @@ Status: ${locationInfo}`;
       }
 
       const locations = await getAvailableLocations();
-      const currentLocation = locations[parseInt(secondChoice) - 1];
-      
-      if (!currentLocation) {
-        return `END Localização inválida.`;
+      const locationIndex = pages[1] * 6 + parseInt(secondChoice) - 1;
+      if (isNaN(locationIndex) || locationIndex < 0 || locationIndex >= locations.length) {
+        return `END Opção inválida.`;
       }
+      const currentLocation = locations[locationIndex];
       
       const destinations = await getAvailableDestinations(currentLocation);
       
