@@ -465,7 +465,7 @@ Status: ${locationInfo}`;
       }
 
       const smsMsg = `Autocarro: ${transportInfo.busId}. Tempo ate chegada: ${transportInfo.timeUntilBusArrives}min. Tempo de viagem: ${transportInfo.travelTime}min. Tarifa: ${transportInfo.fare}MT.`;
-      try { await sendSMS(phoneNumber, smsMsg); } catch (e) { console.error('SMS Error:', e); }
+      try { sendSMS(phoneNumber, smsMsg).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
 
       return `END TRANSPORTE ENCONTRADO
 Autocarro: ${transportInfo.busId}
@@ -1338,14 +1338,6 @@ async function createMissionForUser(phoneNumber: string, from: string, to: strin
     });
 
     console.log(`✅ Mission created for ${phoneNumber} to ${to}`);
-
-    // Send confirmation SMS
-    try {
-      const { notifyMissionCreated } = await import('@/lib/notifications');
-      await notifyMissionCreated(phoneNumber, stop.nome);
-    } catch (error) {
-      console.error('Error sending confirmation SMS:', error);
-    }
 
     return mission;
   } catch (error) {
