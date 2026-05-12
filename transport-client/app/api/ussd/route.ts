@@ -105,8 +105,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 2. Procurar Rotas
 3. Paragens Próximas
 4. Calcular Tarifa
-5. Pagamento
-6. Ajuda
+5. Ajuda
 9. Rastrear Autocarro`;
   }
 
@@ -151,16 +150,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         
         return paginateList("Calcular Tarifa - Escolha origem:", fareLocations, currPg, 6);
 
-      
       case '5':
-        const payLocations = await getAvailableLocations();
-        if (payLocations.length === 0) {
-          return `END Nenhuma localização disponível no momento.`;
-        }
-        
-        return paginateList("Pagamento - Escolha origem:", payLocations, currPg, 6);
-
-      case '6':
         return `END Sistema de Transportes - Ajuda
 
 Marque *384*123# para:
@@ -313,29 +303,6 @@ Tente outro nome de local.`;
 
 
     // Option 5: Pagamento
-    if (mainChoice === '5') {
-      if (userInput === '0') {
-        return await handleUSSD(sessionId, phoneNumber, '');
-      }
-
-      const locations = await getAvailableLocations();
-      
-      const locationIndex = pages[1] * 6 + parseInt(userInput) - 1;
-      if (locationIndex >= locations.length) return `END Opção inválida.`;
-      if (locationIndex < 0 || locationIndex >= locations.length) {
-        return `END Opção inválida.`;
-      }
-
-      const origin = locations[locationIndex];
-      const allDestinations = await getAvailableDestinations(origin);
-      const destinations = allDestinations.filter(d => d !== origin);
-      
-      if (destinations.length === 0) {
-        return `END Nenhum destino disponível de ${origin}.`;
-      }
-      
-      return paginateList(`Pagamento: ${origin} - Para onde?`, destinations, currPg, 6);
-    }
 
     // Option 5: Saved routes submenu (EXISTING)
     if (mainChoice === '3') {
@@ -682,7 +649,7 @@ Obrigado por usar nosso servico!`;
     const thirdInput = inputs[2];
     const fifthInput = inputs[4];
 
-    if (fifthInput === '1234') {
+    if (fifthInput) {
       const locations = await getAvailableLocations();
       const locationIndex = pages[1] * 6 + parseInt(secondChoice) - 1;
       const currentLocation = locations[locationIndex];
@@ -702,37 +669,6 @@ Obrigado por usar nosso servico!`;
     }
   }
 
-  // LEVEL 4: Handle Pagamento amount
-  if (level === 4 && inputs[0] === '5') {
-    const mainChoice = inputs[0];
-    const secondChoice = inputs[1];
-    const thirdInput = inputs[2];
-    const amount = inputs[3];
-
-    if (amount === '0') {
-      return await handleUSSD(sessionId, phoneNumber, '');
-    }
-
-    const locations = await getAvailableLocations();
-    const origin = locations[pages[1] * 6 + parseInt(secondChoice) - 1];
-    const allDestinations = await getAvailableDestinations(origin);
-    const destinations = allDestinations.filter(d => d !== origin);
-    const destination = destinations[pages[2] * 6 + parseInt(thirdInput) - 1];
-    
-    const transportInfo = await findTransportInfo(origin, destination);
-    
-    if (!transportInfo) {
-      return `END Transferência de ${amount} MT confirmada. Viagem ${origin}-${destination}.`;
-    }
-
-    const smsMessage = `Pagamento ${amount}MT recebido. Viagem ${origin}-${destination}. Autocarro: ${transportInfo.busId}. Chegada em: ${transportInfo.timeUntilBusArrives}m. Tempo de viagem: ${transportInfo.travelTime}m. Total: ${transportInfo.totalTime}m.`;
-    try { waitUntil(sendSMS(phoneNumber, smsMessage)); } catch (e) {}
-
-    return `END Transferencia confirmada!
-${amount} MT recebido.
-Tempo ate autocarro: ${transportInfo.timeUntilBusArrives} min
-Detalhes enviados por SMS.`;
-  }
 
   // LEVEL 4: Handle route/stop selection after custom input
   if (level === 4) {
