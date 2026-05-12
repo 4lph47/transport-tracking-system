@@ -446,11 +446,13 @@ Tente outro nome de local.`;
         ? "Em movimento (GPS Ativo)" 
         : "Localizacao indisponivel";
         
-      return `END AUTOCARRO ENCONTRADO
+      const response = `END AUTOCARRO ENCONTRADO
 Matricula: ${transport.matricula}
 Marca: ${transport.marca || 'N/A'} ${transport.modelo || ''}
 Rota: ${transport.via?.nome || 'Nenhuma rota atribuida'}
 Status: ${locationInfo}`;
+      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      return response;
     }
   }
 
@@ -587,7 +589,7 @@ Detalhes por SMS!`;
         return `END Erro ao calcular tarifa. Tente novamente.`;
       }
       
-      return `END CALCULO DE TARIFA
+      const response = `END CALCULO DE TARIFA
 
 DE: ${origin || 'N/A'}
 PARA: ${destination || 'N/A'}
@@ -597,6 +599,8 @@ TARIFA: ${fareInfo.fare || '0'} MT
 TEMPO: ${fareInfo.duration || 'N/A'}
 
 ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
+      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      return response;
     }
 
 
@@ -656,7 +660,7 @@ ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
 
       const route = routes[routeIndex];
       
-      return `END ${route.name || 'Rota'}
+      const response = `END ${route.name || 'Rota'}
 
 De: ${route.origin || 'N/A'}
 Para: ${route.destination || 'N/A'}
@@ -665,6 +669,8 @@ Horario: ${route.hours || '05:00 - 22:00'}
 Tarifa: ${route.fare || '20-30'} MT
 
 Obrigado por usar nosso servico!`;
+      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      return response;
     }
 
     if (mainChoice === '3') {
@@ -697,11 +703,13 @@ Obrigado por usar nosso servico!`;
 
       const stop = stops[stopIndex];
       
-      return `END ${stop.name || 'Paragem'}
+      const response = `END ${stop.name || 'Paragem'}
 
 ${stop.routes ? `Rotas: ${stop.routes}` : 'Sem informacao de rotas'}
 
 Obrigado por usar nosso servico!`;
+      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      return response;
     }
   }
 
