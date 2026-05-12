@@ -98,7 +98,8 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 3. Paragens Próximas
 4. Calcular Tarifa
 5. Pagamento
-6. Ajuda`;
+6. Ajuda
+7. Rastrear Autocarro`;
   }
 
   // LEVEL 1: Main menu selection
@@ -161,6 +162,10 @@ Marque *384*123# para:
 - Procurar rotas
 
 Suporte: info@transporte.mz`;
+
+      case '7':
+        return `CON Digite a matricula do autocarro:
+(ex: ACK ou 184M)`;
 
       default:
         return `END Opção inválida. Por favor, tente novamente.`;
@@ -375,6 +380,41 @@ Tente outro nome de local.`;
       if (userInput === '0') {
         return await handleUSSD(sessionId, phoneNumber, '');
       }
+    }
+
+    // Option 7: Track Specific Transport
+    if (mainChoice === '7') {
+      const matricula = userInput.trim().toUpperCase();
+      
+      if (matricula.length < 3) {
+        return `END Por favor, insira pelo menos 3 caracteres da matricula.`;
+      }
+      
+      const transport = await prisma.transporte.findFirst({
+        where: { matricula: { contains: matricula, mode: 'insensitive' } },
+        select: {
+          id: true,
+          matricula: true,
+          marca: true,
+          modelo: true,
+          currGeoLocation: true,
+          via: { select: { nome: true } }
+        }
+      });
+      
+      if (!transport) {
+        return `END Nenhum autocarro encontrado com a matricula "${matricula}".`;
+      }
+      
+      const locationInfo = transport.currGeoLocation && transport.currGeoLocation.includes(',') 
+        ? "Em movimento (GPS Ativo)" 
+        : "Localizacao indisponivel";
+        
+      return `END AUTOCARRO ENCONTRADO
+Matricula: ${transport.matricula}
+Marca: ${transport.marca || 'N/A'} ${transport.modelo || ''}
+Rota: ${transport.via?.nome || 'Nenhuma rota atribuida'}
+Status: ${locationInfo}`;
     }
   }
 
