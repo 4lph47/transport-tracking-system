@@ -124,8 +124,15 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
   const pages: number[] = [];
   let currPg = 0;
   for (const val of rawInputs) {
-    if (val === '98') currPg++;
-    else if (val === '99') currPg = Math.max(0, currPg - 1);
+    if (val === '7') currPg++;
+    else if (val === '8') currPg = Math.max(0, currPg - 1);
+    else if (val === '0') {
+      if (inputs.length > 0) {
+        inputs.pop();
+        pages.pop();
+      }
+      currPg = 0;
+    }
     else {
       inputs.push(val);
       pages.push(currPg);
@@ -451,7 +458,7 @@ Matricula: ${transport.matricula}
 Marca: ${transport.marca || 'N/A'} ${transport.modelo || ''}
 Rota: ${transport.via?.nome || 'Nenhuma rota atribuida'}
 Status: ${locationInfo}`;
-      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
   }
@@ -599,7 +606,7 @@ TARIFA: ${fareInfo.fare || '0'} MT
 TEMPO: ${fareInfo.duration || 'N/A'}
 
 ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
-      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
 
@@ -669,7 +676,7 @@ Horario: ${route.hours || '05:00 - 22:00'}
 Tarifa: ${route.fare || '20-30'} MT
 
 Obrigado por usar nosso servico!`;
-      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
 
@@ -708,7 +715,7 @@ Obrigado por usar nosso servico!`;
 ${stop.routes ? `Rotas: ${stop.routes}` : 'Sem informacao de rotas'}
 
 Obrigado por usar nosso servico!`;
-      try { sendSMS(phoneNumber, response.replace('END ', '')).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
   }
