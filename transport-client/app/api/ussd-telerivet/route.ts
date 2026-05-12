@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendSMS } from '@/lib/notifications';
+import { waitUntil } from '@vercel/functions';
 
 // Telerivet USSD format
 interface TelerivetRequest {
@@ -458,7 +459,7 @@ Matricula: ${transport.matricula}
 Marca: ${transport.marca || 'N/A'} ${transport.modelo || ''}
 Rota: ${transport.via?.nome || 'Nenhuma rota atribuida'}
 Status: ${locationInfo}`;
-      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
+      try { waitUntil(sendSMS(phoneNumber, response.replace('END ', ''))); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
   }
@@ -506,7 +507,7 @@ Status: ${locationInfo}`;
       }
 
       const smsMsg = `Autocarro: ${transportInfo.busId}. Tempo ate chegada: ${transportInfo.timeUntilBusArrives}min. Tempo de viagem: ${transportInfo.travelTime}min. Tarifa: ${transportInfo.fare}MT.`;
-      try { sendSMS(phoneNumber, smsMsg).catch(e => console.error('SMS Background Error:', e)); } catch (e) {}
+      try { waitUntil(sendSMS(phoneNumber, smsMsg)); } catch (e) { console.error('SMS Background Error:', e); }
 
       return `END TRANSPORTE ENCONTRADO
 Autocarro: ${transportInfo.busId}
@@ -606,7 +607,7 @@ TARIFA: ${fareInfo.fare || '0'} MT
 TEMPO: ${fareInfo.duration || 'N/A'}
 
 ROTAS DISPONIVEIS: ${fareInfo.routeCount || 0}`;
-      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
+      try { waitUntil(sendSMS(phoneNumber, response.replace('END ', ''))); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
 
@@ -676,7 +677,7 @@ Horario: ${route.hours || '05:00 - 22:00'}
 Tarifa: ${route.fare || '20-30'} MT
 
 Obrigado por usar nosso servico!`;
-      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
+      try { waitUntil(sendSMS(phoneNumber, response.replace('END ', ''))); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
 
@@ -715,7 +716,7 @@ Obrigado por usar nosso servico!`;
 ${stop.routes ? `Rotas: ${stop.routes}` : 'Sem informacao de rotas'}
 
 Obrigado por usar nosso servico!`;
-      try { await sendSMS(phoneNumber, response.replace('END ', '')); } catch (e) { console.error('SMS Error:', e); }
+      try { waitUntil(sendSMS(phoneNumber, response.replace('END ', ''))); } catch (e) { console.error('SMS Error:', e); }
       return response;
     }
   }
@@ -745,7 +746,7 @@ Obrigado por usar nosso servico!`;
     }
 
     const smsMessage = `Pagamento ${amount}MT recebido. Viagem ${origin}-${destination}. Autocarro: ${transportInfo.busId}. Chegada em: ${transportInfo.timeUntilBusArrives}m. Tempo de viagem: ${transportInfo.travelTime}m. Total: ${transportInfo.totalTime}m.`;
-    try { await sendSMS(phoneNumber, smsMessage); } catch (e) {}
+    try { waitUntil(sendSMS(phoneNumber, smsMessage)); } catch (e) {}
 
     return `END Transferencia confirmada!
 ${amount} MT recebido.
@@ -781,7 +782,7 @@ Detalhes enviados por SMS.`;
       const route = routes[routeIndex];
       
       const rMsg = `Rota ${route.name}: ${route.origin} - ${route.destination}. Tarifa: ${route.fare || '20-30'}MT.`;
-      try { await sendSMS(phoneNumber, rMsg); } catch (e) {}
+      try { waitUntil(sendSMS(phoneNumber, rMsg)); } catch (e) {}
       return `END ${route.name}
 
 De: ${route.origin}
@@ -814,7 +815,7 @@ Obrigado por usar nosso servico!`;
       const stop = stops[stopIndex];
       
       const sMsg = `Paragem ${stop.name}. Rotas: ${stop.routes ? stop.routes : 'N/A'}`; 
-      try { await sendSMS(phoneNumber, sMsg); } catch (e) {}
+      try { waitUntil(sendSMS(phoneNumber, sMsg)); } catch (e) {}
       return `END ${stop.name}
 
 ${stop.routes ? `Rotas: ${stop.routes}` : 'Sem informacao de rotas'}
