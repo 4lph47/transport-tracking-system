@@ -427,24 +427,12 @@ Tente outro nome de local.`;
       const smsMsg = `Autocarro: ${transportInfo.busId}. Tempo ate chegada: ${transportInfo.timeUntilBusArrives}min. Tempo de viagem: ${transportInfo.travelTime}min. Tarifa: ${transportInfo.fare}MT.`;
       try { await sendSMS(phoneNumber, smsMsg); } catch (e) { console.error('SMS Error:', e); }
 
-      return `END INFORMACAO DE TRANSPORTE
-
-AUTOCARRO: ${transportInfo.busId}
-LOCALIZACAO ATUAL: ${transportInfo.busLocation}
-
-TEMPO ATE CHEGAR A SI: ${transportInfo.timeUntilBusArrives} min
-TEMPO DE VIAGEM: ${transportInfo.travelTime} min
-TEMPO TOTAL: ${transportInfo.totalTime} min
-
-HORA DE CHEGADA: ${transportInfo.arrivalTime}
-
-DISTANCIA: ${transportInfo.distance} km
-TARIFA: ${transportInfo.fare} MT
-
-DE: ${transportInfo.from}
-PARA: ${transportInfo.to}
-
-Voce sera notificado via SMS!`;
+      return `END TRANSPORTE ENCONTRADO
+Autocarro: ${transportInfo.busId}
+Chega em: ${transportInfo.timeUntilBusArrives} min
+Viagem: ${transportInfo.travelTime} min
+Tarifa: ${transportInfo.fare} MT
+Detalhes por SMS!`;
     }
 
     // Option 2: Search routes - Handle custom location input (EXISTING)
