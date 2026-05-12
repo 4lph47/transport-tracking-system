@@ -143,7 +143,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 4. Calcular Tarifa
 5. Pagamento
 6. Ajuda
-7. Rastrear Autocarro`;
+9. Rastrear Autocarro`;
   }
 
   // LEVEL 1: Main menu selection
@@ -207,7 +207,7 @@ Marque *384*123# para:
 
 Suporte: info@transporte.mz`;
 
-      case '7':
+      case '9':
         return `CON Digite a matricula do autocarro:
 (ex: ACK ou 184M)`;
 
@@ -426,8 +426,8 @@ Tente outro nome de local.`;
       }
     }
 
-    // Option 7: Track Specific Transport
-    if (mainChoice === '7') {
+    // Option 9: Track Specific Transport
+    if (mainChoice === '9') {
       const matricula = userInput.trim().toUpperCase();
       
       if (matricula.length < 3) {
