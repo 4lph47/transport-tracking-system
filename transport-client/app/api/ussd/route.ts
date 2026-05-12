@@ -432,15 +432,16 @@ Status: ${locationInfo}`;
         console.error('Error creating mission:', error);
       }
 
-      const smsMsg = `Autocarro: ${transportInfo.busId}. Tempo ate chegada: ${transportInfo.timeUntilBusArrives}min. Tempo de viagem: ${transportInfo.travelTime}min. Tarifa: ${transportInfo.fare}MT.`;
-      try { waitUntil(sendSMS(phoneNumber, smsMsg)); } catch (e) { console.error('SMS Background Error:', e); }
-
-      return `END TRANSPORTE ENCONTRADO
+      // DO NOT send SMS here yet, wait for Level 4 or 5
+      return `CON TRANSPORTE ENCONTRADO
 Autocarro: ${transportInfo.busId}
 Chega em: ${transportInfo.timeUntilBusArrives} min
 Viagem: ${transportInfo.travelTime} min
 Tarifa: ${transportInfo.fare} MT
-Detalhes por SMS!`;
+
+Deseja pagar agora?
+1. Sim
+2. Nao`;
     }
 
     // Option 2: Search routes - Handle custom location input (EXISTING)
@@ -647,6 +648,59 @@ Obrigado por usar nosso servico!`;
     }
   }
 
+
+  // LEVEL 4: Handle Find Transport Payment Choice
+  if (level === 4 && inputs[0] === '1') {
+    const secondChoice = inputs[1];
+    const thirdInput = inputs[2];
+    const fourthInput = inputs[3];
+
+    if (fourthInput === '1') {
+      return `CON Introduza o seu PIN (1234):`;
+    } else if (fourthInput === '2') {
+      const locations = await getAvailableLocations();
+      const locationIndex = pages[1] * 6 + parseInt(secondChoice) - 1;
+      const currentLocation = locations[locationIndex];
+      const destinations = await getAvailableDestinations(currentLocation);
+      const destIndex = pages[2] * 6 + parseInt(thirdInput) - 1;
+      const destination = destinations[destIndex];
+      const transportInfo = await findTransportInfo(currentLocation, destination);
+
+      if (transportInfo) {
+        const smsMsg = `Autocarro: ${transportInfo.busId}. Tempo ate chegada: ${transportInfo.timeUntilBusArrives}min. Tempo de viagem: ${transportInfo.travelTime}min. Tarifa: ${transportInfo.fare}MT.`;
+        try { waitUntil(sendSMS(phoneNumber, smsMsg)); } catch (e) { }
+      }
+      return `END Detalhes enviados por SMS.`;
+    } else {
+      return `END Opção inválida.`;
+    }
+  }
+
+  // LEVEL 5: Handle Find Transport PIN
+  if (level === 5 && inputs[0] === '1') {
+    const secondChoice = inputs[1];
+    const thirdInput = inputs[2];
+    const fifthInput = inputs[4];
+
+    if (fifthInput === '1234') {
+      const locations = await getAvailableLocations();
+      const locationIndex = pages[1] * 6 + parseInt(secondChoice) - 1;
+      const currentLocation = locations[locationIndex];
+      const destinations = await getAvailableDestinations(currentLocation);
+      const destIndex = pages[2] * 6 + parseInt(thirdInput) - 1;
+      const destination = destinations[destIndex];
+      const transportInfo = await findTransportInfo(currentLocation, destination);
+
+      if (transportInfo) {
+        const smsMsg = `Pagamento de ${transportInfo.fare} MT recebido. Viagem ${currentLocation}-${destination}. Autocarro: ${transportInfo.busId}. Chegada em: ${transportInfo.timeUntilBusArrives}m.`;
+        try { waitUntil(sendSMS(phoneNumber, smsMsg)); } catch (e) { }
+        return `END Pagamento de ${transportInfo.fare} MT confirmado.\nDetalhes enviados por SMS.`;
+      }
+      return `END Pagamento confirmado.\nDetalhes enviados por SMS.`;
+    } else {
+      return `END PIN incorreto. Operacao cancelada.`;
+    }
+  }
 
   // LEVEL 4: Handle Pagamento amount
   if (level === 4 && inputs[0] === '5') {
