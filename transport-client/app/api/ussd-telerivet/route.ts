@@ -252,15 +252,7 @@ Suporte: info@transporte.mz`;
         return `END Nenhum transporte disponível de ${currentLocation}.`;
       }
 
-      let destMenu = `CON Você está perto de:\n${nearestStop.name}\n\nPara onde quer ir?\n`;
-      destinations.slice(0, 5).forEach((dest, i) => {
-        destMenu += `${i + 1}. ${dest}\n`;
-      });
-      if (destinations.length > 5) {
-        destMenu += `6. Outro destino\n`;
-      }
-      destMenu += `0. Voltar`;
-      return destMenu;
+      return paginateList(`Você está perto de: ${nearestStop.name}\nPara onde quer ir?`, destinations, currPg, 6);
     }
 
     // Option 2: Search routes (EXISTING)
@@ -483,12 +475,8 @@ Status: ${locationInfo}`;
       
       const destinations = await getAvailableDestinations(currentLocation);
       
-      if (thirdInput === '6' || parseInt(thirdInput) > destinations.slice(0, 5).length) {
-        return `CON Digite o destino:`;
-      }
-
-      const destIndex = parseInt(thirdInput) - 1;
-      if (destIndex < 0 || destIndex >= destinations.length) {
+      const destIndex = pages[2] * 6 + parseInt(thirdInput) - 1;
+      if (isNaN(destIndex) || destIndex < 0 || destIndex >= destinations.length) {
         return `END Opção inválida.`;
       }
 
