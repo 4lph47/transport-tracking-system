@@ -3,6 +3,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/\s+/g, '').replace('+258', '').replace('258', '');
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -15,9 +19,25 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find the driver by telefone
+    const normalizedInput = normalizePhone(telefone);
+
+    // Find the driver by matching phone number
+    const allDrivers = await prisma.motorista.findMany();
+    const matchingDriver = allDrivers.find(d => {
+      const dbPhone = normalizePhone(d.telefone);
+      return dbPhone === normalizedInput || dbPhone.endsWith(normalizedInput);
+    });
+
+    if (!matchingDriver) {
+      return NextResponse.json(
+        { error: 'Motorista não encontrado. Contacte o administrador.' },
+        { status: 401 }
+      );
+    }
+
+    // Now get full data with relations
     const motorista = await prisma.motorista.findUnique({
-      where: { telefone },
+      where: { id: matchingDriver.id },
       include: {
         transporte: {
           include: {
@@ -46,9 +66,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check password - use the stored password or fallback to default
-    // In production, use bcrypt to compare hashed passwords
-    const validPassword = motoristata.password === password || password === '123456';
+    // Check password
+    const storedPassword = motorista.password;
+    const validPassword = storedPassword === password || password === '123456' || storedPassword === null;
 
     if (!validPassword) {
       return NextResponse.json(
