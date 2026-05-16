@@ -19,10 +19,12 @@ export async function GET(request: NextRequest) {
 
       console.log(`✅ Found ${allBuses.length} buses in circulation`);
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         buses: allBuses,
         total: allBuses.length,
       });
+      response.headers.set('Access-Control-Allow-Origin', '*');
+      return response;
     }
 
     if (!paragemId || !viaId) {

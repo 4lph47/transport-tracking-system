@@ -5,24 +5,20 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const viaId = searchParams.get('viaId');
-    
-    if (!viaId) {
-      return NextResponse.json(
-        { error: 'viaId is required' },
-        { status: 400 }
-      );
-    }
-    
-    console.log('Fetching paragens for via:', viaId);
-    
-    const paragens = await prisma.paragem.findMany({
-      where: {
-        vias: {
-          some: {
-            viaId: viaId,
-          },
+
+    console.log('Fetching paragens for via:', viaId || 'all');
+
+    // Build where clause based on whether viaId is provided
+    const whereClause = viaId ? {
+      vias: {
+        some: {
+          viaId: viaId,
         },
       },
+    } : {};
+
+    const paragens = await prisma.paragem.findMany({
+      where: whereClause,
       select: {
         id: true,
         nome: true,
@@ -49,7 +45,7 @@ export async function GET(request: Request) {
       viaIds: p.vias.map((v) => v.viaId),
     }));
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { paragens: paragensFormatted },
       {
         headers: {
@@ -59,6 +55,8 @@ export async function GET(request: Request) {
         },
       }
     );
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    return response;
   } catch (error: any) {
     console.error('Error fetching paragens:', error);
     return NextResponse.json(

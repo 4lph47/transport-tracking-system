@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       console.log('Sample via with counts:', JSON.stringify(transformedVias[0], null, 2));
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { vias: transformedVias },
       {
         headers: {
@@ -60,6 +60,8 @@ export async function GET(request: Request) {
         },
       }
     );
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    return response;
   } catch (error: any) {
     console.error('Error fetching vias:', error);
     return NextResponse.json(
