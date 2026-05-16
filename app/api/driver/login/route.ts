@@ -35,8 +35,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Now get full data with relations
-    const motorista = await prisma.motorista.findUnique({
+    // Now get full data with relations - includes transporte with via and paragens
+    const motoristata = await prisma.motorista.findUnique({
       where: { id: matchingDriver.id },
       include: {
         transporte: {
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       }
     });
 
-    if (!motorista) {
+    if (!motoristata) {
       return NextResponse.json(
         { error: 'Motorista não encontrado. Contacte o administrador.' },
         { status: 401 }
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     // Check password
-    const storedPassword = motorista.password;
+    const storedPassword = motoristata.password;
     const validPassword = storedPassword === password || password === '123456' || storedPassword === null;
 
     if (!validPassword) {
@@ -77,51 +77,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the associated transport if any
-    const transporte = await prisma.transporte.findFirst({
-      where: { motoristaId: motorista.id }
-    });
-
-    // Get the via if transport has one
-    let via = null;
-    let paragens = [];
-
-    if (transporte?.viaId) {
-      via = await prisma.via.findUnique({
-        where: { id: transporte.viaId },
-        include: {
-          municipio: true,
-          paragens: {
-            include: {
-              paragem: true
-            },
-            orderBy: {
-              id: 'asc'
-            }
-          }
-        }
-      });
-
-      if (via) {
-        paragens = via.paragens.map(vp => ({
-          id: vp.paragem.id,
-          nome: vp.paragem.nome,
-          geoLocation: vp.paragem.geoLocation,
-          isTerminal: vp.terminalBoolean
-        }));
-      }
-    }
+    // Use the transport from the motoristata query - no need for extra query
+    const transporte = motoristata.transporte;
+    const via = transporte?.via || null;
+    const paragens = via ? via.paragens.map(vp => ({
+      id: vp.paragem.id,
+      nome: vp.paragem.nome,
+      geoLocation: vp.paragem.geoLocation,
+      isTerminal: vp.terminalBoolean
+    })) : [];
 
     const responseData = {
-      id: motorista.id,
-      nome: motorista.nome,
-      bi: motorista.bi,
-      telefone: motorista.telefone,
-      email: motorista.email,
-      foto: motorista.foto,
-      status: motorista.status,
-      categoriaCarta: motorista.categoriaCarta,
-      experienciaAnos: motorista.experienciaAnos,
+      id: motoristata.id,
+      nome: motoristata.nome,
+      bi: motoristata.bi,
+      telefone: motoristata.telefone,
+      email: motoristata.email,
+      foto: motoristata.foto,
+      status: motoristata.status,
+      categoriaCarta: motoristata.categoriaCarta,
+      experienciaAnos: motoristata.experienciaAnos,
       Transporte: transporte ? {
         id: transporte.id,
         matricula: transporte.matricula,
