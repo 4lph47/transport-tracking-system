@@ -232,6 +232,7 @@ model Motorista {
   dataValidadeCarta DateTime
   categoriaCarta  String   @default("B") // A, B, C, D, E
   experienciaAnos Int      @default(0) // Anos de experiência como motorista
+  password        String?  // Password for driver login
   observacoes     String?  @db.Text
   status          String   @default("ativo") // ativo, inativo, suspenso
   transporteId    String?  @unique           // Cada motorista só pode estar em UM transporte

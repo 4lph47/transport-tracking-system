@@ -39,6 +39,7 @@ export default function EditarMotorista() {
     dataValidadeCarta: "",
     categoriaCarta: "",
     experienciaAnos: "0",
+    password: "",
     observacoes: "",
     status: "ativo"
   });
@@ -80,6 +81,7 @@ export default function EditarMotorista() {
         dataValidadeCarta: data.dataValidadeCarta ? new Date(data.dataValidadeCarta).toISOString().split('T')[0] : "",
         categoriaCarta: data.categoriaCarta || "D",
         experienciaAnos: String(data.experienciaAnos || 0),
+        password: data.password || "",
         observacoes: data.observacoes || "",
         status: data.status || "ativo"
       });
@@ -628,6 +630,19 @@ export default function EditarMotorista() {
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-gray-900"
                       placeholder="Ex: 5"
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Password (para Login)
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-gray-900"
+                      placeholder="Deixe vazio para manter a atual"
                     />
                   </div>
 
