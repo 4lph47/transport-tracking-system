@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3000";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,7 +43,8 @@ export default function LoginPage() {
       localStorage.setItem('motorista', JSON.stringify(data));
       router.push('/dashboard');
     } catch (err) {
-      setError('Erro de conexão. Tente novamente.');
+      console.error('Login error:', err);
+      setError('Erro de conexão. Verifique se o servidor está a funcionar.');
       setIsLoading(false);
     }
   };
