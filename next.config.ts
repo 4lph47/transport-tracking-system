@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* Memory optimization settings */
+  turbopack: {
+    root: '.',
+  },
   experimental: {
     // Reduce memory usage during build
     optimizePackageImports: ['@prisma/client', 'maplibre-gl'],
