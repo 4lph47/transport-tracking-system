@@ -98,6 +98,11 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
   }
   const level = inputs.length;
 
+  // Intercept all driver menu interactions statelessly
+  if (inputs[0] === '6') {
+    return await handleDriverMenuStateless(sessionId, phoneNumber, inputs);
+  }
+
   // LEVEL 0: Main Menu (first interaction)
   if (level === 0) {
     return `CON Bem-vindo ao Sistema de Transportes
@@ -1317,15 +1322,13 @@ async function createMissionForUser(phoneNumber: string, from: string, to: strin
   }
 }
 
-// DRIVER MENU HANDLER
-// Store driver sessions in memory (in production, use Redis or database)
-const driverSessions: { [sessionId: string]: { authenticated: boolean; driverId?: string } } = {};
+// ─── STATELESS DRIVER SYSTEM ──────────────────────────────────────────────────
 
 function normalizePhone(phone: string): string {
-  return phone.replace(/\s+/g, '').replace('+258', '').replace('258', '');
+  return phone.replace(/\s+/g, '').replace('+258', '').replace(/^258/, '');
 }
 
-async function handleDriverMenu(sessionId: string, phoneNumber: string, text: string): Promise<string> {
+async function handleDriverMenuStateless(sessionId: string, phoneNumber: string, inputs: string[]): Promise<string> {
   const normalizedPhone = normalizePhone(phoneNumber);
 
   // Check if driver exists with this phone number
@@ -1333,162 +1336,165 @@ async function handleDriverMenu(sessionId: string, phoneNumber: string, text: st
   const driver = allDrivers.find(d => normalizePhone(d.telefone) === normalizedPhone || normalizePhone(d.telefone).endsWith(normalizedPhone));
 
   if (!driver) {
-    // Not a driver - send SMS and end
     const msg = `Ola! O numero ${phoneNumber} nao esta registado como motorista. Contacte o administrador para se registrar.`;
     try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
     return `END Desculpe, o seu numero nao esta registado como motorista no sistema.`;
   }
 
-  // Driver found - check authentication status
-  const session = driverSessions[sessionId] || { authenticated: false };
+  const level = inputs.length; // e.g. ['6'] -> level 1, ['6', 'password'] -> level 2, etc.
 
-  // If not authenticated, ask for password
-  if (!session.authenticated) {
-    // Get just the last part after * (the actual input)
-    const inputs = text.split('*');
-    const lastInput = inputs[inputs.length - 1];
-
-    // If text is just "6" (no password entered yet), ask for password
-    if (text === '6' || lastInput === '6') {
-      return `CON Area do Motorista
+  // Level 1: Ask for password
+  if (level === 1) {
+    return `CON Area do Motorista
 Senha:`;
-    }
-
-    // User entered password - verify it (extract just the password part)
-    const password = lastInput || '';
-    const driverData = driver as any;
-    const validPassword = driverData.password === password || password === '123456' || driverData.password === null;
-
-    if (!validPassword) {
-      return `CON Senha incorreta. Tente novamente:
-Senha:`;
-    }
-
-    // Password correct - authenticate
-    driverSessions[sessionId] = { authenticated: true, driverId: driver.id };
-
-    // Send welcome SMS with driver info
-    const driverInfoMsg = `Bem-vindo, ${driver.nome}! Voce esta autenticado no sistema TransportMZ.`;
-    try { waitUntil(sendSMS(phoneNumber, driverInfoMsg)); } catch (e) { }
-
-    return `CON Menu do Motorista
-1. Iniciar Viagem
-2. Parar Viagem
-3. Ver Minha Info
-4. Ver Rota
-5. Ver Autocarro
-6. Ver Passageiros
-7. Ver Estado Viagem
-8. Contactar Suporte
-0. Sair`;
   }
 
-  // Authenticated - process menu selection
-  const inputs = text === '' ? [] : text.split('*');
-  const selection = inputs[inputs.length - 1];
+  // From Level 2 onwards, we have the password in inputs[1]
+  const password = inputs[1] || '';
+  const driverData = driver as any;
+  const validPassword = driverData.password === password || password === '123456' || driverData.password === null;
 
-  switch (selection) {
-    case '1': // Start journey
-      return `CON Confirmar inicio de viagem?
-1. Sim
-2. Nao`;
+  if (!validPassword) {
+    return `END Senha incorreta. Por favor, disque novamente para tentar de novo.`;
+  }
 
-    case '2': // Stop journey
-      return `CON Confirmar final de viagem?
-1. Sim
-2. Nao`;
-
-    case '3': // See driver info
-      const driverInfo = await prisma.motorista.findUnique({
-        where: { id: driver.id },
+  // Load complete driver info with relations for menus
+  const driverInfo = await prisma.motorista.findUnique({
+    where: { id: driver.id },
+    include: {
+      transporte: {
         include: {
-          transporte: {
+          via: {
             include: {
-              via: true
+              paragens: {
+                include: { paragem: true },
+                orderBy: { id: 'asc' }
+              }
             }
           }
         }
-      });
+      }
+    }
+  });
 
-      const infoMsg = `MOTORISTA: ${driverInfo?.nome || 'N/A'}
-BI: ${driverInfo?.bi || 'N/A'}
-Telefone: ${driverInfo?.telefone || 'N/A'}
-Categoria Carta: ${driverInfo?.categoriaCarta || 'N/A'}
-Experiencia: ${driverInfo?.experienciaAnos || 0} anos
-Status: ${driverInfo?.status || 'N/A'}
-${driverInfo?.transporte ? `Autocarro: ${driverInfo.transporte.marca} ${driverInfo.transporte.modelo} (${driverInfo.transporte.matricula})` : 'Sem autocarro atribuido'}
-${driverInfo?.transporte?.via ? `Rota: ${driverInfo.transporte.via.nome} (${driverInfo.transporte.via.terminalPartida} - ${driverInfo.transporte.via.terminalChegada})` : 'Sem rota atribuida'}`;
+  const t = driverInfo?.transporte;
+  const v = t?.via;
 
-      try { waitUntil(sendSMS(phoneNumber, infoMsg)); } catch (e) { }
-      return `END Sua Informacao:
+  // Level 2: Show driver main menu
+  if (level === 2) {
+    const statusLabel = driverInfo?.status === 'ONLINE' || driverInfo?.status === 'active' ? 'ONLINE' : 'OFFLINE';
+    const actionLabel = statusLabel === 'ONLINE' ? '1. Encerrar Viagem' : '1. Iniciar Viagem';
+
+    let dashboard = `CON BEM-VINDO, ${driver.nome.toUpperCase().split(' ')[0]}
+
+STATUS: ${statusLabel}
+`;
+
+    if (t) {
+      dashboard += `MATRICULA: ${t.matricula}
+`;
+    }
+    if (v) {
+      dashboard += `ROTA: ${v.nome}
+`;
+    }
+
+    dashboard += `
+${actionLabel}
+2. Ver Minha Info
+3. Ver Rota
+4. Ver Autocarro
+0. Sair`;
+
+    return dashboard;
+  }
+
+  // Level 3: Process submenu selection
+  if (level === 3) {
+    const subChoice = inputs[2];
+
+    if (subChoice === '0') {
+      return `END Sessao encerrada. Obrigado por usar o sistema!`;
+    }
+
+    switch (subChoice) {
+      case '1': {
+        // Start / End ride confirmation screen
+        const statusLabel = driverInfo?.status === 'ONLINE' || driverInfo?.status === 'active' ? 'ONLINE' : 'OFFLINE';
+        if (statusLabel === 'OFFLINE') {
+          return `CON INICIAR VIAGEM
+
+Veiculo: ${t?.matricula || 'N/A'}
+Rota: ${v?.terminalPartida || 'N/A'} -> ${v?.terminalChegada || 'N/A'}
+
+1. Confirmar - Iniciar Viagem
+0. Cancelar`;
+        } else {
+          return `CON ENCERRAR VIAGEM
+
+Veiculo: ${t?.matricula || 'N/A'}
+Rota: ${v?.terminalPartida || 'N/A'} -> ${v?.terminalChegada || 'N/A'}
+
+1. Confirmar - Encerrar Viagem
+0. Cancelar`;
+        }
+      }
+
+      case '2': {
+        // Driver Info
+        const infoMsg = `SUA INFORMACAO:
 Nome: ${driverInfo?.nome || 'N/A'}
 BI: ${driverInfo?.bi || 'N/A'}
 Telefone: ${driverInfo?.telefone || 'N/A'}
 Carta: ${driverInfo?.categoriaCarta || 'N/A'}
 Experiencia: ${driverInfo?.experienciaAnos || 0} anos
-Status: ${driverInfo?.status || 'N/A'}
-Autocarro: ${driverInfo?.transporte?.matricula || 'N/A'}
-Rota: ${driverInfo?.transporte?.via?.nome || 'N/A'}
+Status: ${driverInfo?.status || 'OFFLINE'}
+Autocarro: ${t?.matricula || 'N/A'}
+Rota: ${v?.nome || 'N/A'}`;
+
+        try { waitUntil(sendSMS(phoneNumber, infoMsg)); } catch (e) { }
+        return `END Sua Informacao:
+Nome: ${driverInfo?.nome || 'N/A'}
+BI: ${driverInfo?.bi || 'N/A'}
+Telefone: ${driverInfo?.telefone || 'N/A'}
+Carta: ${driverInfo?.categoriaCarta || 'N/A'}
+Experiencia: ${driverInfo?.experienciaAnos || 0} anos
+Status: ${driverInfo?.status || 'OFFLINE'}
+Autocarro: ${t?.matricula || 'N/A'}
+Rota: ${v?.nome || 'N/A'}
 
 Detalhes enviados por SMS.`;
+      }
 
-    case '4': // See route info
-      const routeInfo = await prisma.motorista.findUnique({
-        where: { id: driver.id },
-        include: {
-          transporte: {
-            include: {
-              via: {
-                include: {
-                  municipio: true,
-                  paragens: {
-                    include: { paragem: true },
-                    orderBy: { id: 'asc' }
-                  }
-                }
-              }
-            }
-          }
-        }
-      });
+      case '3': {
+        // Route Info
+        const stops = v?.paragens?.map((p: any) => p.paragem.nome).join(', ') || 'N/A';
+        const routeMsg = `ROTA: ${v?.nome || 'N/A'}
+Origem: ${v?.terminalPartida || 'N/A'}
+Destino: ${v?.terminalChegada || 'N/A'}
+Paragens (${v?.paragens?.length || 0}): ${stops}`;
 
-      const route = routeInfo?.transporte?.via;
-      const stops = route?.paragens?.map((p: any) => p.paragem.nome).join(', ') || 'N/A';
-
-      const routeMsg = `ROTA: ${route?.nome || 'N/A'}
-Origem: ${route?.terminalPartida || 'N/A'}
-Destino: ${route?.terminalChegada || 'N/A'}
-Municipio: ${route?.municipio?.nome || 'N/A'}
-Paragens (${route?.paragens?.length || 0}): ${stops}`;
-
-      try { waitUntil(sendSMS(phoneNumber, routeMsg)); } catch (e) { }
-      return `END Informacao da Rota:
-Nome: ${route?.nome || 'N/A'}
-Origem: ${route?.terminalPartida || 'N/A'}
-Destino: ${route?.terminalChegada || 'N/A'}
-Municipio: ${route?.municipio?.nome || 'N/A'}
+        try { waitUntil(sendSMS(phoneNumber, routeMsg)); } catch (e) { }
+        return `END Informacao da Rota:
+Nome: ${v?.nome || 'N/A'}
+Origem: ${v?.terminalPartida || 'N/A'}
+Destino: ${v?.terminalChegada || 'N/A'}
 Paragens: ${stops}
 
 Detalhes enviados por SMS.`;
+      }
 
-    case '5': // See transport info
-      const transportInfo = await prisma.motorista.findUnique({
-        where: { id: driver.id },
-        include: {
-          transporte: true
-        }
-      });
-
-      const t = transportInfo?.transporte;
-      const tMsg = `AUTOCARRO: ${t?.matricula || 'N/A'}
+      case '4': {
+        // Autocarro Info
+        const tMsg = `AUTOCARRO: ${t?.matricula || 'N/A'}
 Marca: ${t?.marca || 'N/A'}
 Modelo: ${t?.modelo || 'N/A'}
 Cor: ${t?.cor || 'N/A'}
 Lotacao: ${t?.lotacao || 'N/A'}
-Localizacao: ${t?.currGeoLocation || 'N/A'}`;
+GPS: ${t?.currGeoLocation || 'N/A'}`;
 
-      try { waitUntil(sendSMS(phoneNumber, tMsg)); } catch (e) { }
-      return `END Informacao do Autocarro:
+        try { waitUntil(sendSMS(phoneNumber, tMsg)); } catch (e) { }
+        return `END Informacao do Autocarro:
 Matricula: ${t?.matricula || 'N/A'}
 Marca: ${t?.marca || 'N/A'}
 Modelo: ${t?.modelo || 'N/A'}
@@ -1497,89 +1503,62 @@ Lotacao: ${t?.lotacao || 'N/A'}
 GPS: ${t?.currGeoLocation || 'N/A'}
 
 Detalhes enviados por SMS.`;
+      }
 
-    case '6': // See passengers (placeholder - would need journey tracking)
-      return `END Nenhum passageiro registado nesta viagem. Use o aplicativo para registar passageiros.`;
-
-    case '7': // See journey status
-      return `END Estado da Viagem: Em curso
-Velocidade: 45 km/h
-Paragem Atual: Porto
-Proxima Paragem: Museu
-Tempo de Viagem: 25 min`;
-
-    case '8': // Contact support
-      return `CON Contactar Suporte
-1. Ligacao
-2. SMS
-0. Voltar`;
-
-    case '0': // Logout
-      delete driverSessions[sessionId];
-      return `END Sessao encerrada. Obrigado por usar o sistema!`;
-
-    default:
-      return `CON Menu do Motorista
-1. Iniciar Viagem
-2. Parar Viagem
-3. Ver Minha Info
-4. Ver Rota
-5. Ver Autocarro
-6. Ver Passageiros
-7. Ver Estado Viagem
-8. Contactar Suporte
-0. Sair`;
-  }
-}
-
-// Handle driver journey start/stop at deeper levels
-async function handleDriverJourney(sessionId: string, phoneNumber: string, inputs: string[], level: number): Promise<string> {
-  if (level < 2) return '';
-
-  const normalizedPhone = normalizePhone(phoneNumber);
-  const allDrivers = await prisma.motorista.findMany();
-  const driver = allDrivers.find(d => normalizePhone(d.telefone) === normalizedPhone || normalizePhone(d.telefone).endsWith(normalizedPhone));
-
-  if (!driver) return '';
-
-  // Find the driver menu selection (after option 6)
-  const driverInputs = inputs.slice(1); // Skip the 6 (driver menu)
-  if (driverInputs.length < 1) return '';
-
-  const menuSelection = driverInputs[0];
-
-  if (menuSelection === '1' && driverInputs.length >= 2) {
-    // Start journey confirmation
-    const confirm = driverInputs[1];
-    if (confirm === '1') {
-      // Update driver status
-      await prisma.motorista.update({
-        where: { id: driver.id },
-        data: { status: 'Em viacao' }
-      });
-
-      const msg = `Viagem iniciada! rota: ${driver.id}. Bons trabalhos!`;
-      try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
-      return `END Viagem iniciada com sucesso!Detalhes enviados por SMS.`;
+      default:
+        return `END Opcao invalida.`;
     }
-    return `END Inicio de viagem cancelado.`;
   }
 
-  if (menuSelection === '2' && driverInputs.length >= 2) {
-    // Stop journey confirmation
-    const confirm = driverInputs[1];
-    if (confirm === '1') {
-      await prisma.motorista.update({
-        where: { id: driver.id },
-        data: { status: 'Disponivel' }
-      });
+  // Level 4: Confirm Start/End ride
+  if (level === 4) {
+    const subChoice = inputs[2];
+    const confirmChoice = inputs[3];
 
-      const msg = `Viagem terminada. Obrigado!`;
-      try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
-      return `END Viagem terminada. Bom trabalho!Detalhes enviados por SMS.`;
+    if (subChoice === '1') {
+      if (confirmChoice === '1') {
+        const currentIsOnline = driverInfo?.status === 'ONLINE' || driverInfo?.status === 'active';
+        const newStatus = currentIsOnline ? 'OFFLINE' : 'ONLINE';
+
+        try {
+          await prisma.motorista.update({
+            where: { id: driver.id },
+            data: { status: newStatus }
+          });
+
+          if (newStatus === 'ONLINE') {
+            const msg = `Viagem iniciada com sucesso! Veiculo: ${t?.matricula || 'N/A'}. Bons trabalhos!`;
+            try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
+            return `END VIAGEM INICIADA
+
+STATUS: ONLINE
+
+Boa viagem, ${driver.nome.split(' ')[0]}!
+Veiculo: ${t?.matricula || 'N/A'}
+Rota: ${v?.terminalPartida || 'N/A'} -> ${v?.terminalChegada || 'N/A'}
+
+Bom trabalho!`;
+          } else {
+            const msg = `Viagem encerrada com sucesso. Obrigado pelo trabalho de hoje!`;
+            try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
+            return `END VIAGEM ENCERRADA
+
+STATUS: OFFLINE
+
+Ate logo, ${driver.nome.split(' ')[0]}!
+Obrigado pelo trabalho de hoje.
+Veiculo: ${t?.matricula || 'N/A'}
+
+Ate proxima viagem!`;
+          }
+        } catch (error) {
+          console.error('Error updating driver status:', error);
+          return `END Erro ao atualizar status da viagem. Tente novamente.`;
+        }
+      }
+      return `END Operacao cancelada.`;
     }
-    return `END Paragem de viagem cancelada.`;
   }
 
-  return '';
+  return `END Obrigado por usar o Sistema de Transportes!`;
 }
