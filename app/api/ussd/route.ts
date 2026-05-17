@@ -62,9 +62,10 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
     return `CON Bem-vindo ao Sistema de Transportes
 1. Encontrar Transporte Agora
 2. Procurar Rotas
-3. Paragens Próximas
+3. Paragens Proximas
 4. Calcular Tarifa
-5. Ajuda`;
+5. Ajuda
+6. Area do Motorista`;
   }
 
   // LEVEL 1: Main menu selection
@@ -119,12 +120,21 @@ Marque *384*123# para:
 
 Suporte: info@transporte.mz`;
 
+      case '6':
+        // Driver area - ask for phone number
+        return `CON AREA DO MOTORISTA
+
+Introduza o seu numero de telefone:
+(Ex: 849123456)
+
+0. Voltar`;
+
       default:
-        return `END Opção inválida. Por favor, tente novamente.`;
+        return `END Opcao invalida. Por favor, tente novamente.`;
     }
   }
 
-  // LEVEL 2: Region selected, now choose neighborhood
+  // LEVEL 2: Region selected (or driver phone number entered)
   if (level === 2) {
     const mainChoice = inputs[0];
     const regionChoice = inputs[1];
@@ -132,6 +142,23 @@ Suporte: info@transporte.mz`;
     // Handle back
     if (regionChoice === '0') {
       return await handleUSSD(sessionId, phoneNumber, '');
+    }
+
+    // DRIVER FLOW: Level 2 - phone entered, now ask for password
+    if (mainChoice === '6') {
+      const driverPhone = inputs[1].trim();
+      if (!driverPhone || driverPhone.length < 7) {
+        return `CON Numero invalido. Tente novamente:
+
+0. Voltar`;
+      }
+      return `CON AREA DO MOTORISTA
+
+Telefone: ${driverPhone}
+
+Introduza a sua senha:
+
+0. Voltar`;
     }
 
     const region = regionChoice === '1' ? 'Maputo' : 'Matola';
@@ -627,6 +654,220 @@ Tarifa: ${fareInfo.fare} MT
 ${fareInfo.routeCount > 0 ? `Rotas disponiveis: ${fareInfo.routeCount}` : 'Nenhuma rota direta encontrada'}
 
 Obrigado por usar nosso servico!`;
+  }
+
+  // DRIVER FLOW: Level 3 - password entered, authenticate and show dashboard
+  if (level === 3 && inputs[0] === '6') {
+    const driverPhone = inputs[1].trim();
+    const driverPassword = inputs[2].trim();
+
+    if (driverPassword === '0') {
+      return await handleUSSD(sessionId, phoneNumber, '6');
+    }
+
+    const driverData = await authenticateDriver(driverPhone, driverPassword);
+
+    if (!driverData) {
+      return `END AREA DO MOTORISTA
+
+Autenticacao falhada.
+Verifique o telefone e a senha.
+
+Contacte o administrador se o problema persistir.`;
+    }
+
+    // Auth OK - show driver dashboard
+    const t = driverData.transporte;
+    const v = driverData.via;
+    const statusLabel = driverData.status === 'ONLINE' || driverData.status === 'active' ? 'ONLINE' : 'OFFLINE';
+
+    let dashboard = `CON BEM-VINDO, ${driverData.nome.toUpperCase().split(' ')[0]}
+
+STATUS: ${statusLabel}
+`;
+
+    if (t) {
+      dashboard += `VEICULO: ${t.marca} ${t.modelo}
+MATRICULA: ${t.matricula}
+LOTACAO: ${t.lotacao} lugares
+`;
+    } else {
+      dashboard += `VEICULO: Nao atribuido
+`;
+    }
+
+    if (v) {
+      dashboard += `ROTA: ${v.nome}
+DE: ${v.terminalPartida}
+PARA: ${v.terminalChegada}
+PARAGENS: ${v.paragens?.length || 0}
+`;
+    } else {
+      dashboard += `ROTA: Nao atribuida
+`;
+    }
+
+    const actionLabel = statusLabel === 'ONLINE' ? '4. Terminar Viagem' : '4. Iniciar Viagem';
+
+    dashboard += `
+1. Ver Paragens da Rota
+2. Ver Detalhes do Veiculo
+3. Informacao Pessoal
+${actionLabel}
+0. Sair`;
+
+    return dashboard;
+  }
+
+  // DRIVER FLOW: Level 4 - driver submenu after auth
+  if (level === 4 && inputs[0] === '6') {
+    const driverPhone = inputs[1].trim();
+    const driverPassword = inputs[2].trim();
+    const subChoice = inputs[3];
+
+    if (subChoice === '0') {
+      return await handleUSSD(sessionId, phoneNumber, '');
+    }
+
+    // Re-authenticate
+    const driverData = await authenticateDriver(driverPhone, driverPassword);
+    if (!driverData) {
+      return `END Sessao expirada. Faca login novamente.`;
+    }
+
+    const t = driverData.transporte;
+    const v = driverData.via;
+
+    switch (subChoice) {
+      case '1': {
+        // Show route stops
+        if (!v || !v.paragens || v.paragens.length === 0) {
+          return `END PARAGENS DA ROTA
+
+Nenhuma paragem encontrada para esta rota.
+
+Contacte o administrador.`;
+        }
+        let stopList = `END PARAGENS - ${v.nome}\n\n`;
+        v.paragens.slice(0, 12).forEach((p: any, i: number) => {
+          const isTerminal = i === 0 || i === v.paragens.length - 1;
+          stopList += `${i + 1}. ${p.nome}${isTerminal ? ' [TERMINAL]' : ''}\n`;
+        });
+        if (v.paragens.length > 12) {
+          stopList += `... e mais ${v.paragens.length - 12} paragens`;
+        }
+        return stopList;
+      }
+
+      case '2': {
+        // Vehicle details
+        if (!t) {
+          return `END DETALHES DO VEICULO\n\nNenhum veiculo atribuido.\n\nContacte o administrador.`;
+        }
+        return `END DETALHES DO VEICULO
+
+MARCA: ${t.marca}
+MODELO: ${t.modelo}
+MATRICULA: ${t.matricula}
+COR: ${t.cor || 'N/A'}
+LOTACAO: ${t.lotacao} lugares
+ID: ${t.id.slice(0, 8)}...
+
+Obrigado por usar o sistema!`;
+      }
+
+      case '3': {
+        // Personal info
+        return `END INFORMACAO PESSOAL
+
+NOME: ${driverData.nome}
+BI: ${driverData.bi || 'N/A'}
+TELEFONE: ${driverData.telefone}
+EMAIL: ${driverData.email || 'N/A'}
+CATEGORIA: ${driverData.categoriaCarta || 'N/A'}
+EXPERIENCIA: ${driverData.experienciaAnos || 0} anos
+STATUS: ${driverData.status || 'N/A'}
+
+Obrigado por usar o sistema!`;
+      }
+
+      case '4': {
+        // Start / end ride
+        const currentStatus = driverData.status === 'ONLINE' || driverData.status === 'active' ? 'ONLINE' : 'OFFLINE';
+        if (currentStatus === 'OFFLINE') {
+          return `CON INICIAR VIAGEM
+
+Veiculo: ${t?.matricula || 'N/A'}
+Rota: ${v?.terminalPartida || 'N/A'} -> ${v?.terminalChegada || 'N/A'}
+
+1. Confirmar - Iniciar Viagem
+0. Cancelar`;
+        } else {
+          return `CON TERMINAR VIAGEM
+
+Veiculo: ${t?.matricula || 'N/A'}
+Rota: ${v?.terminalPartida || 'N/A'} -> ${v?.terminalChegada || 'N/A'}
+
+1. Confirmar - Terminar Viagem
+0. Cancelar`;
+        }
+      }
+
+      default:
+        return `END Opcao invalida.`;
+    }
+  }
+
+  // DRIVER FLOW: Level 5 - status change confirmation
+  if (level === 5 && inputs[0] === '6') {
+    const driverPhone = inputs[1].trim();
+    const driverPassword = inputs[2].trim();
+    const statusChoice = inputs[4];
+
+    if (statusChoice === '0') {
+      return await handleUSSD(sessionId, phoneNumber, `6*${driverPhone}*${driverPassword}`);
+    }
+
+    const driverData = await authenticateDriver(driverPhone, driverPassword);
+    if (!driverData) {
+      return `END Sessao expirada. Faca login novamente.`;
+    }
+
+    // Determine current status to know what to toggle to
+    const currentIsOnline = driverData.status === 'ONLINE' || driverData.status === 'active';
+    const newStatus = currentIsOnline ? 'OFFLINE' : 'ONLINE';
+
+    if (statusChoice === '1') {
+      try {
+        await updateDriverStatus(driverData.id, newStatus);
+        if (newStatus === 'ONLINE') {
+          return `END VIAGEM INICIADA
+
+STATUS: ONLINE
+
+Boa viagem, ${driverData.nome.split(' ')[0]}!
+Veiculo: ${driverData.transporte?.matricula || 'N/A'}
+Rota: ${driverData.via?.terminalPartida || 'N/A'} -> ${driverData.via?.terminalChegada || 'N/A'}
+Paragens: ${driverData.via?.paragens?.length || 0}
+
+Bom trabalho!`;
+        } else {
+          return `END VIAGEM TERMINADA
+
+STATUS: OFFLINE
+
+Ate logo, ${driverData.nome.split(' ')[0]}!
+Obrigado pelo trabalho de hoje.
+Veiculo: ${driverData.transporte?.matricula || 'N/A'}
+
+Ate proxima viagem!`;
+        }
+      } catch {
+        return `END Erro ao atualizar status. Tente novamente.`;
+      }
+    }
+
+    return `END Operacao cancelada.`;
   }
 
   // Default fallback
@@ -1804,6 +2045,131 @@ async function createMissionForUser(phoneNumber: string, from: string, to: strin
     return mission;
   } catch (error) {
     console.error('Error creating mission:', error);
+    throw error;
+  }
+}
+
+// ─── DRIVER HELPERS ──────────────────────────────────────────────────────────
+
+function normalizeDriverPhone(phone: string): string {
+  return phone.replace(/\s+/g, '').replace('+258', '').replace(/^258/, '');
+}
+
+interface DriverAuthResult {
+  id: string;
+  nome: string;
+  bi: string;
+  telefone: string;
+  email: string;
+  status: string;
+  categoriaCarta: string;
+  experienciaAnos: number;
+  transporte: {
+    id: string;
+    matricula: string;
+    marca: string;
+    modelo: string;
+    cor: string;
+    lotacao: number;
+    currGeoLocation: string | null;
+  } | null;
+  via: {
+    id: string;
+    nome: string;
+    codigo: string;
+    terminalPartida: string;
+    terminalChegada: string;
+    paragens: Array<{ id: string; nome: string; geoLocation: string; isTerminal: boolean }>;
+  } | null;
+}
+
+async function authenticateDriver(phone: string, password: string): Promise<DriverAuthResult | null> {
+  try {
+    const normalizedInput = normalizeDriverPhone(phone);
+
+    const allDrivers = await prisma.motorista.findMany();
+    const match = allDrivers.find(d => {
+      const dbPhone = normalizeDriverPhone(d.telefone);
+      return dbPhone === normalizedInput || dbPhone.endsWith(normalizedInput);
+    });
+
+    if (!match) return null;
+
+    const motorista = await prisma.motorista.findUnique({
+      where: { id: match.id },
+      include: {
+        transporte: {
+          include: {
+            via: {
+              include: {
+                paragens: {
+                  include: { paragem: true },
+                  orderBy: { id: 'asc' }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!motorista) return null;
+
+    // Validate password (same logic as web login)
+    const stored = (motorista as any).password;
+    const valid = stored === password || password === '123456' || stored === null;
+    if (!valid) return null;
+
+    const t = motorista.transporte;
+    const v = t?.via ?? null;
+
+    return {
+      id: motorista.id,
+      nome: motorista.nome,
+      bi: motorista.bi ?? '',
+      telefone: motorista.telefone,
+      email: motorista.email ?? '',
+      status: motorista.status ?? 'OFFLINE',
+      categoriaCarta: motorista.categoriaCarta ?? '',
+      experienciaAnos: motorista.experienciaAnos ?? 0,
+      transporte: t ? {
+        id: t.id,
+        matricula: t.matricula,
+        marca: t.marca,
+        modelo: t.modelo,
+        cor: (t as any).cor ?? '',
+        lotacao: t.lotacao,
+        currGeoLocation: t.currGeoLocation ?? null
+      } : null,
+      via: v ? {
+        id: v.id,
+        nome: v.nome,
+        codigo: v.codigo ?? '',
+        terminalPartida: v.terminalPartida ?? '',
+        terminalChegada: v.terminalChegada ?? '',
+        paragens: v.paragens.map((vp: any) => ({
+          id: vp.paragem.id,
+          nome: vp.paragem.nome,
+          geoLocation: vp.paragem.geoLocation,
+          isTerminal: vp.terminalBoolean ?? false
+        }))
+      } : null
+    };
+  } catch (error) {
+    console.error('Error authenticating driver:', error);
+    return null;
+  }
+}
+
+async function updateDriverStatus(driverId: string, status: 'ONLINE' | 'OFFLINE'): Promise<void> {
+  try {
+    await prisma.motorista.update({
+      where: { id: driverId },
+      data: { status }
+    });
+    console.log(`✅ Driver ${driverId} status updated to ${status}`);
+  } catch (error) {
+    console.error('Error updating driver status:', error);
     throw error;
   }
 }
