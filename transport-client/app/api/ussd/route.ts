@@ -169,7 +169,7 @@ Suporte: info@transporte.mz`;
 
       case '6':
         // Driver menu - check if driver exists and prompt for password
-        return await handleDriverMenu(sessionId, phoneNumber, text);
+        return await handleDriverMenuStateless(sessionId, phoneNumber, ['6']);
 
       case '9':
         return `CON Digite a matricula do autocarro:
