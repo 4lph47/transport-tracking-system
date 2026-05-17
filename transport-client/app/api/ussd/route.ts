@@ -112,7 +112,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 4. Calcular Tarifa
 5. Rastrear Autocarro
 6. Area do Motorista
-7. Ajuda`;
+9. Ajuda`;
   }
 
   // LEVEL 1: Main menu selection
@@ -164,7 +164,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         // Driver menu - check if driver exists and prompt for password
         return await handleDriverMenuStateless(sessionId, phoneNumber, ['6']);
 
-      case '7':
+      case '9':
         return `END Sistema de Transportes - Ajuda
 
 Como Usar o Sistema:
