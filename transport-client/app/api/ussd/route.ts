@@ -167,13 +167,17 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
       case '7':
         return `END Sistema de Transportes - Ajuda
 
-Marque *384*123# para:
-- Encontrar transporte proximo
-- Ver tempo de chegada
-- Calcular tarifa
-- Procurar rotas
+Como Usar o Sistema:
+1. Encontrar: Escolha a origem e destino para ver o autocarro proximo e tempo de chegada.
+2. Procurar Rotas: Consulte as rotas disponiveis e pontos terminais.
+3. Paragens: Veja a lista de paragens por zona.
+4. Calcular Tarifa: Introduza a origem/destino para ver a distancia e preco.
+5. Rastrear: Digite a matricula para ver o status do autocarro.
+6. Motorista: Area restrita para iniciar/encerrar viagens.
 
-Suporte: info@transporte.mz`;
+Contacto de Suporte:
+Email: info@transporte.mz
+Linha Verde: +258 84 123 4567`;
 
       default:
         return `END Opção inválida. Por favor, tente novamente.`;
