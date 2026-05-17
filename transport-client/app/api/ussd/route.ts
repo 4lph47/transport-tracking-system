@@ -1344,14 +1344,18 @@ async function handleDriverMenu(sessionId: string, phoneNumber: string, text: st
 
   // If not authenticated, ask for password
   if (!session.authenticated) {
-    if (text === '') {
-      // First time - ask for password
+    // Get just the last part after * (the actual input)
+    const inputs = text.split('*');
+    const lastInput = inputs[inputs.length - 1];
+
+    // If text is just "6" (no password entered yet), ask for password
+    if (text === '6' || lastInput === '6') {
       return `CON Area do Motorista
 Senha:`;
     }
 
-    // User entered password - verify it
-    const password = text.split('*').pop() || '';
+    // User entered password - verify it (extract just the password part)
+    const password = lastInput || '';
     const driverData = driver as any;
     const validPassword = driverData.password === password || password === '123456' || driverData.password === null;
 
@@ -1364,7 +1368,7 @@ Senha:`;
     driverSessions[sessionId] = { authenticated: true, driverId: driver.id };
 
     // Send welcome SMS with driver info
-    const driverInfoMsg = `Bem-vindo, ${driver.nome}! Você está autenticado no sistema TransportMZ.`;
+    const driverInfoMsg = `Bem-vindo, ${driver.nome}! Voce esta autenticado no sistema TransportMZ.`;
     try { waitUntil(sendSMS(phoneNumber, driverInfoMsg)); } catch (e) { }
 
     return `CON Menu do Motorista
@@ -1374,6 +1378,8 @@ Senha:`;
 4. Ver Rota
 5. Ver Autocarro
 6. Ver Passageiros
+7. Ver Estado Viagem
+8. Contactar Suporte
 0. Sair`;
   }
 
@@ -1495,6 +1501,19 @@ Detalhes enviados por SMS.`;
     case '6': // See passengers (placeholder - would need journey tracking)
       return `END Nenhum passageiro registado nesta viagem. Use o aplicativo para registar passageiros.`;
 
+    case '7': // See journey status
+      return `END Estado da Viagem: Em curso
+Velocidade: 45 km/h
+Paragem Atual: Porto
+Proxima Paragem: Museu
+Tempo de Viagem: 25 min`;
+
+    case '8': // Contact support
+      return `CON Contactar Suporte
+1. Ligacao
+2. SMS
+0. Voltar`;
+
     case '0': // Logout
       delete driverSessions[sessionId];
       return `END Sessao encerrada. Obrigado por usar o sistema!`;
@@ -1507,6 +1526,8 @@ Detalhes enviados por SMS.`;
 4. Ver Rota
 5. Ver Autocarro
 6. Ver Passageiros
+7. Ver Estado Viagem
+8. Contactar Suporte
 0. Sair`;
   }
 }
