@@ -7,6 +7,17 @@ function normalizePhone(phone: string): string {
   return phone.replace(/\s+/g, '').replace('+258', '').replace('258', '');
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -97,7 +108,7 @@ export async function POST(request: Request) {
       status: motoristata.status,
       categoriaCarta: motoristata.categoriaCarta,
       experienciaAnos: motoristata.experienciaAnos,
-      Transporte: transporte ? {
+      transporte: transporte ? {
         id: transporte.id,
         matricula: transporte.matricula,
         marca: transporte.marca,

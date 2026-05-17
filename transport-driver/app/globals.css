@@ -63,6 +63,17 @@ body {
   border-bottom: none;
 }
 
+/* Hide OpenStreetMap attribution */
+.maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+/* Move zoom controls up */
+.maplibregl-ctrl-bottom-right {
+  bottom: 135px !important;
+  right: 10px !important;
+}
+
 /* 3D Bus Marker Styles */
 .bus-3d-marker-container {
   cursor: pointer;
