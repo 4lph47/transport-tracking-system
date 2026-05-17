@@ -368,71 +368,51 @@ Sistema de Transportes de Moçambique
 
 ---
 
-### 4.3 transport-driver (Portal do Motorista)
-
-**URL:** http://localhost:3002
-
-**Credenciais de teste:**
-- BI: 110203456789A
-- Password: 123456
+### 4.3 transport-driver - Portal do Motorista
+URL de acesso: http://localhost:3002
+Credenciais de teste: BI 110203456789A / senha 123456
 
 #### 4.3.1 Dashboard do Motorista
+•	Informacoes do motorista e veiculo
+•	Status de servico (Online/Offline) com toggle
+•	Controlo de viagem (Iniciar/Finalizar)
+•	Localizacao GPS, velocidade e contador de passageiros (0-15)
+•	Acoes rapidas: Ver Rota, Estatisticas, Reportar, Suporte
+•	Atividade recente
 
-**Funcionalidades:**
-- Informações do motorista e veículo
-- Status de serviço (Online/Offline)
-- Toggle para ativar/desativar serviço
-- Controlo de viagem (Iniciar/Finalizar)
-- Estatísticas:
-  - Localização GPS
-  - Velocidade
-  - Contador de passageiros (0-15)
-- Ações rápidas:
-  - Ver Rota
-  - Estatísticas
-  - Reportar
-  - Suporte
-- Atividade recente
-
-**[Screenshot Area 17 - Dashboard Motorista]**
-- Capture: Dashboard do motorista com status e controlos
-- Como obter: http://localhost:3002/dashboard
+[ Figura 17 ]
+Dashboard do Motorista - Status e controlos de viagem
+Screenshot a capturar em: http://localhost:3002/dashboard
 
 ---
 
 #### 4.3.2 Ver Rota
+•	Mapa 3D com a rota completa
+•	Visualizacao do trajecto atribuido
 
-**Funcionalidades:**
-- Mapa 3D com a rota completa
-- Visualização do trajecto
-
-**[Screenshot Area 18 - Rota do Motorista]**
-- Capture: Mapa mostrando a rota assigned
-- Como obter: http://localhost:3002/route
+[ Figura 18 ]
+Rota do Motorista - Mapa com trajecto atribuido
+Screenshot a capturar em: http://localhost:3002/route
 
 ---
 
-#### 4.3.3 Estatísticas
+#### 4.3.3 Estatisticas
+•	Estatisticas de viagens realizadas
+•	Passageiros transportados
 
-**Funcionalidades:**
-- Estatísticas de viagens
-- Passageiros transportados
-
-**[Screenshot Area 19 - Estatísticas do Motorista]**
-- Capture: Página de estatísticas
-- Como obter: http://localhost:3002/stats
+[ Figura 19 ]
+Estatisticas do Motorista - Viagens e passageiros
+Screenshot a capturar em: http://localhost:3002/stats
 
 ---
 
 #### 4.3.4 Reportar Problemas
+•	Formulario para reportar problemas
+•	Envio direto para a administracao
 
-**Funcionalidades:**
-- Formulário para reportar problemas
--Enviar para administração
-
-**[Screenshot Area 20 - Reportar]**
-- Capture: Página de relatórios
-- Como obter: http://localhost:3002/report
+[ Figura 20 ]
+Reportar Problemas - Formulario de reporte
+Screenshot a capturar em: http://localhost:3002/report
 
 ---
 
@@ -450,6 +430,35 @@ Sistema de Transportes de Moçambique
 | `/api/ussd` | Interface USSD |
 | `/api/simulation` | Simulação de localização |
 | `/api/dashboard/stats` | Estatísticas do dashboard |
+
+---
+
+### 4.5 Plataforma USSD
+Código de acesso simulado: `*384*123#` (disponível no simulador da aplicação)
+
+#### 4.5.1 Menu do Passageiro (USSD)
+•	Encontrar Transporte Agora (pesquisa de transportes ativos com origem, destino e estimativa de tempo)
+•	Procurar Rotas (listagem e consulta de rotas por distrito e via)
+•	Paragens Próximas (lista paginada de paragens por zona)
+•	Calcular Tarifa (consulta rápida do custo estimado da viagem)
+•	Rastrear Autocarro (busca direta pela matrícula do veículo)
+•	Ajuda (instruções completas do sistema)
+
+[ Figura 21 ]
+Menu Principal do Passageiro no USSD
+Screenshot a capturar em: http://localhost:3000/api/ussd
+
+---
+
+#### 4.5.2 Portal do Motorista no USSD (Área do Motorista)
+•	Autenticação móvel segura com número de telefone e palavra-passe (Stateless validation)
+•	Iniciar Viagem (atualização instantânea de estado e início de circulação)
+•	Encerrar Viagem (fechamento automático de viagem com libertação do veículo)
+•	Controle de fluxo de viagem em tempo real baseado no estado atual do motorista
+
+[ Figura 22 ]
+Área do Motorista no USSD - Menu de controle de viagem
+Screenshot a capturar em: http://localhost:3000/api/ussd
 
 ---
 
@@ -590,6 +599,8 @@ GeoLocation
 | 18 | transport-driver | Ver rota | http://localhost:3002/route |
 | 19 | transport-driver | Estatísticas | http://localhost:3002/stats |
 | 20 | transport-driver | Reportar problemas | http://localhost:3002/report |
+| 21 | USSD Simulator | Menu do Passageiro no USSD | http://localhost:3000/api/ussd |
+| 22 | USSD Simulator | Portal do Motorista no USSD | http://localhost:3000/api/ussd |
 
 ### Como Capturar os Screenshots
 
@@ -633,7 +644,7 @@ Transports-Aplication/
 ### 8.2 Funcionalidades em Desenvolvimento
 
 - [ ] Rastreamento GPS em tempo real (simulado)
-- [ ] Integração completa com USSD
+- [x] Integração completa com USSD (incluindo Portal do Motorista stateless)
 - [ ] Notificações push
 - [ ] Sistema de pagamentos
 - [ ] App mobile
