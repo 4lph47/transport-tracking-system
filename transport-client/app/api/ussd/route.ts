@@ -112,7 +112,8 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 4. Calcular Tarifa
 5. Ajuda
 6. Area do Motorista
-9. Rastrear Autocarro`;
+7. Rastrear Autocarro
+8. Sobre`;
   }
 
   // LEVEL 1: Main menu selection
@@ -171,9 +172,22 @@ Suporte: info@transporte.mz`;
         // Driver menu - check if driver exists and prompt for password
         return await handleDriverMenuStateless(sessionId, phoneNumber, ['6']);
 
-      case '9':
+      case '7':
         return `CON Digite a matricula do autocarro:
 (ex: ACK ou 184M)`;
+
+      case '8':
+        return `END Sobre o Sistema de Transportes
+
+Este sistema permite-lhe:
+- Encontrar transporte em tempo real.
+- Consultar rotas e paragens proximas.
+- Calcular tarifas de viagem.
+- Motoristas podem iniciar/encerrar viagens.
+
+Como usar: Seleccione uma opcao do menu principal, responda com o numero e envie.
+
+Versao 2.0 | TransportMZ`;
 
       default:
         return `END Opção inválida. Por favor, tente novamente.`;
@@ -329,8 +343,8 @@ Tente outro nome de local.`;
       }
     }
 
-    // Option 9: Track Specific Transport
-    if (mainChoice === '9') {
+    // Option 7: Track Specific Transport
+    if (mainChoice === '7') {
       const matricula = userInput.trim().toUpperCase();
       
       if (matricula.length < 3) {
