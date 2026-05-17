@@ -112,8 +112,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 4. Calcular Tarifa
 5. Ajuda
 6. Area do Motorista
-7. Rastrear Autocarro
-8. Sobre`;
+7. Rastrear Autocarro`;
   }
 
   // LEVEL 1: Main menu selection
@@ -175,19 +174,6 @@ Suporte: info@transporte.mz`;
       case '7':
         return `CON Digite a matricula do autocarro:
 (ex: ACK ou 184M)`;
-
-      case '8':
-        return `END Sobre o Sistema de Transportes
-
-Este sistema permite-lhe:
-- Encontrar transporte em tempo real.
-- Consultar rotas e paragens proximas.
-- Calcular tarifas de viagem.
-- Motoristas podem iniciar/encerrar viagens.
-
-Como usar: Seleccione uma opcao do menu principal, responda com o numero e envie.
-
-Versao 2.0 | TransportMZ`;
 
       default:
         return `END Opção inválida. Por favor, tente novamente.`;
