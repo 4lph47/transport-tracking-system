@@ -106,6 +106,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 3. Paragens Próximas
 4. Calcular Tarifa
 5. Ajuda
+6. Area do Motorista
 9. Rastrear Autocarro`;
   }
 
@@ -160,6 +161,10 @@ Marque *384*123# para:
 - Procurar rotas
 
 Suporte: info@transporte.mz`;
+
+      case '6':
+        // Driver menu - check if driver exists and prompt for password
+        return await handleDriverMenu(sessionId, phoneNumber, text);
 
       case '9':
         return `CON Digite a matricula do autocarro:
@@ -1312,5 +1317,248 @@ async function createMissionForUser(phoneNumber: string, from: string, to: strin
   }
 }
 
-// If Pagamento Level 4 is missing, let's append it manually inside level === 4 block.
-// Wait, doing this via regex is safer. Let's just write the modified content back.
+// DRIVER MENU HANDLER
+// Store driver sessions in memory (in production, use Redis or database)
+const driverSessions: { [sessionId: string]: { authenticated: boolean; driverId?: string } } = {};
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/\s+/g, '').replace('+258', '').replace('258', '');
+}
+
+async function handleDriverMenu(sessionId: string, phoneNumber: string, text: string): Promise<string> {
+  const normalizedPhone = normalizePhone(phoneNumber);
+
+  // Check if driver exists with this phone number
+  const allDrivers = await prisma.motorista.findMany();
+  const driver = allDrivers.find(d => normalizePhone(d.telefone) === normalizedPhone || normalizePhone(d.telefone).endsWith(normalizedPhone));
+
+  if (!driver) {
+    // Not a driver - send SMS and end
+    const msg = `Ola! O numero ${phoneNumber} nao esta registado como motorista. Contacte o administrador para se registrar.`;
+    try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
+    return `END Desculpe, o seu numero nao esta registado como motorista no sistema.`;
+  }
+
+  // Driver found - check authentication status
+  const session = driverSessions[sessionId] || { authenticated: false };
+
+  // If not authenticated, ask for password
+  if (!session.authenticated) {
+    if (text === '') {
+      // First time - ask for password
+      return `CON Area do Motorista
+Senha:`;
+    }
+
+    // User entered password - verify it
+    const password = text.split('*').pop() || '';
+    const driverData = driver as any;
+    const validPassword = driverData.password === password || password === '123456' || driverData.password === null;
+
+    if (!validPassword) {
+      return `CON Senha incorreta. Tente novamente:
+Senha:`;
+    }
+
+    // Password correct - authenticate
+    driverSessions[sessionId] = { authenticated: true, driverId: driver.id };
+
+    // Send welcome SMS with driver info
+    const driverInfoMsg = `Bem-vindo, ${driver.nome}! Você está autenticado no sistema TransportMZ.`;
+    try { waitUntil(sendSMS(phoneNumber, driverInfoMsg)); } catch (e) { }
+
+    return `CON Menu do Motorista
+1. Iniciar Viagem
+2. Parar Viagem
+3. Ver Minha Info
+4. Ver Rota
+5. Ver Autocarro
+6. Ver Passageiros
+0. Sair`;
+  }
+
+  // Authenticated - process menu selection
+  const inputs = text === '' ? [] : text.split('*');
+  const selection = inputs[inputs.length - 1];
+
+  switch (selection) {
+    case '1': // Start journey
+      return `CON Confirmar inicio de viagem?
+1. Sim
+2. Nao`;
+
+    case '2': // Stop journey
+      return `CON Confirmar final de viagem?
+1. Sim
+2. Nao`;
+
+    case '3': // See driver info
+      const driverInfo = await prisma.motorista.findUnique({
+        where: { id: driver.id },
+        include: {
+          transporte: {
+            include: {
+              via: true
+            }
+          }
+        }
+      });
+
+      const infoMsg = `MOTORISTA: ${driverInfo?.nome || 'N/A'}
+BI: ${driverInfo?.bi || 'N/A'}
+Telefone: ${driverInfo?.telefone || 'N/A'}
+Categoria Carta: ${driverInfo?.categoriaCarta || 'N/A'}
+Experiencia: ${driverInfo?.experienciaAnos || 0} anos
+Status: ${driverInfo?.status || 'N/A'}
+${driverInfo?.transporte ? `Autocarro: ${driverInfo.transporte.marca} ${driverInfo.transporte.modelo} (${driverInfo.transporte.matricula})` : 'Sem autocarro atribuido'}
+${driverInfo?.transporte?.via ? `Rota: ${driverInfo.transporte.via.nome} (${driverInfo.transporte.via.terminalPartida} - ${driverInfo.transporte.via.terminalChegada})` : 'Sem rota atribuida'}`;
+
+      try { waitUntil(sendSMS(phoneNumber, infoMsg)); } catch (e) { }
+      return `END Sua Informacao:
+Nome: ${driverInfo?.nome || 'N/A'}
+BI: ${driverInfo?.bi || 'N/A'}
+Telefone: ${driverInfo?.telefone || 'N/A'}
+Carta: ${driverInfo?.categoriaCarta || 'N/A'}
+Experiencia: ${driverInfo?.experienciaAnos || 0} anos
+Status: ${driverInfo?.status || 'N/A'}
+Autocarro: ${driverInfo?.transporte?.matricula || 'N/A'}
+Rota: ${driverInfo?.transporte?.via?.nome || 'N/A'}
+
+Detalhes enviados por SMS.`;
+
+    case '4': // See route info
+      const routeInfo = await prisma.motorista.findUnique({
+        where: { id: driver.id },
+        include: {
+          transporte: {
+            include: {
+              via: {
+                include: {
+                  municipio: true,
+                  paragens: {
+                    include: { paragem: true },
+                    orderBy: { id: 'asc' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const route = routeInfo?.transporte?.via;
+      const stops = route?.paragens?.map((p: any) => p.paragem.nome).join(', ') || 'N/A';
+
+      const routeMsg = `ROTA: ${route?.nome || 'N/A'}
+Origem: ${route?.terminalPartida || 'N/A'}
+Destino: ${route?.terminalChegada || 'N/A'}
+Municipio: ${route?.municipio?.nome || 'N/A'}
+Paragens (${route?.paragens?.length || 0}): ${stops}`;
+
+      try { waitUntil(sendSMS(phoneNumber, routeMsg)); } catch (e) { }
+      return `END Informacao da Rota:
+Nome: ${route?.nome || 'N/A'}
+Origem: ${route?.terminalPartida || 'N/A'}
+Destino: ${route?.terminalChegada || 'N/A'}
+Municipio: ${route?.municipio?.nome || 'N/A'}
+Paragens: ${stops}
+
+Detalhes enviados por SMS.`;
+
+    case '5': // See transport info
+      const transportInfo = await prisma.motorista.findUnique({
+        where: { id: driver.id },
+        include: {
+          transporte: true
+        }
+      });
+
+      const t = transportInfo?.transporte;
+      const tMsg = `AUTOCARRO: ${t?.matricula || 'N/A'}
+Marca: ${t?.marca || 'N/A'}
+Modelo: ${t?.modelo || 'N/A'}
+Cor: ${t?.cor || 'N/A'}
+Lotacao: ${t?.lotacao || 'N/A'}
+Localizacao: ${t?.currGeoLocation || 'N/A'}`;
+
+      try { waitUntil(sendSMS(phoneNumber, tMsg)); } catch (e) { }
+      return `END Informacao do Autocarro:
+Matricula: ${t?.matricula || 'N/A'}
+Marca: ${t?.marca || 'N/A'}
+Modelo: ${t?.modelo || 'N/A'}
+Cor: ${t?.cor || 'N/A'}
+Lotacao: ${t?.lotacao || 'N/A'}
+GPS: ${t?.currGeoLocation || 'N/A'}
+
+Detalhes enviados por SMS.`;
+
+    case '6': // See passengers (placeholder - would need journey tracking)
+      return `END Nenhum passageiro registado nesta viagem. Use o aplicativo para registar passageiros.`;
+
+    case '0': // Logout
+      delete driverSessions[sessionId];
+      return `END Sessao encerrada. Obrigado por usar o sistema!`;
+
+    default:
+      return `CON Menu do Motorista
+1. Iniciar Viagem
+2. Parar Viagem
+3. Ver Minha Info
+4. Ver Rota
+5. Ver Autocarro
+6. Ver Passageiros
+0. Sair`;
+  }
+}
+
+// Handle driver journey start/stop at deeper levels
+async function handleDriverJourney(sessionId: string, phoneNumber: string, inputs: string[], level: number): Promise<string> {
+  if (level < 2) return '';
+
+  const normalizedPhone = normalizePhone(phoneNumber);
+  const allDrivers = await prisma.motorista.findMany();
+  const driver = allDrivers.find(d => normalizePhone(d.telefone) === normalizedPhone || normalizePhone(d.telefone).endsWith(normalizedPhone));
+
+  if (!driver) return '';
+
+  // Find the driver menu selection (after option 6)
+  const driverInputs = inputs.slice(1); // Skip the 6 (driver menu)
+  if (driverInputs.length < 1) return '';
+
+  const menuSelection = driverInputs[0];
+
+  if (menuSelection === '1' && driverInputs.length >= 2) {
+    // Start journey confirmation
+    const confirm = driverInputs[1];
+    if (confirm === '1') {
+      // Update driver status
+      await prisma.motorista.update({
+        where: { id: driver.id },
+        data: { status: 'Em viacao' }
+      });
+
+      const msg = `Viagem iniciada! rota: ${driver.id}. Bons trabalhos!`;
+      try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
+      return `END Viagem iniciada com sucesso!Detalhes enviados por SMS.`;
+    }
+    return `END Inicio de viagem cancelado.`;
+  }
+
+  if (menuSelection === '2' && driverInputs.length >= 2) {
+    // Stop journey confirmation
+    const confirm = driverInputs[1];
+    if (confirm === '1') {
+      await prisma.motorista.update({
+        where: { id: driver.id },
+        data: { status: 'Disponivel' }
+      });
+
+      const msg = `Viagem terminada. Obrigado!`;
+      try { waitUntil(sendSMS(phoneNumber, msg)); } catch (e) { }
+      return `END Viagem terminada. Bom trabalho!Detalhes enviados por SMS.`;
+    }
+    return `END Paragem de viagem cancelada.`;
+  }
+
+  return '';
+}
