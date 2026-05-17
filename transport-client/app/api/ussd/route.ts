@@ -110,9 +110,9 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 2. Procurar Rotas
 3. Paragens Próximas
 4. Calcular Tarifa
-5. Ajuda
+5. Rastrear Autocarro
 6. Area do Motorista
-7. Rastrear Autocarro`;
+7. Ajuda`;
   }
 
   // LEVEL 1: Main menu selection
@@ -157,6 +157,14 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         return paginateList("Calcular Tarifa - Escolha origem:", fareLocations, currPg, 6);
 
       case '5':
+        return `CON Digite a matricula do autocarro:
+(ex: ACK ou 184M)`;
+
+      case '6':
+        // Driver menu - check if driver exists and prompt for password
+        return await handleDriverMenuStateless(sessionId, phoneNumber, ['6']);
+
+      case '7':
         return `END Sistema de Transportes - Ajuda
 
 Marque *384*123# para:
@@ -166,14 +174,6 @@ Marque *384*123# para:
 - Procurar rotas
 
 Suporte: info@transporte.mz`;
-
-      case '6':
-        // Driver menu - check if driver exists and prompt for password
-        return await handleDriverMenuStateless(sessionId, phoneNumber, ['6']);
-
-      case '7':
-        return `CON Digite a matricula do autocarro:
-(ex: ACK ou 184M)`;
 
       default:
         return `END Opção inválida. Por favor, tente novamente.`;
@@ -329,8 +329,8 @@ Tente outro nome de local.`;
       }
     }
 
-    // Option 7: Track Specific Transport
-    if (mainChoice === '7') {
+    // Option 5: Track Specific Transport
+    if (mainChoice === '5') {
       const matricula = userInput.trim().toUpperCase();
       
       if (matricula.length < 3) {
