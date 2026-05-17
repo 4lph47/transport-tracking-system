@@ -81,8 +81,8 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
   const pages: number[] = [];
   let currPg = 0;
   for (const val of rawInputs) {
-    if (val === '7') currPg++;
-    else if (val === '8') currPg = Math.max(0, currPg - 1);
+    if (val === '7' && inputs.length > 0) currPg++;
+    else if (val === '8' && inputs.length > 0) currPg = Math.max(0, currPg - 1);
     else if (val === '0') {
       if (inputs.length > 0) {
         inputs.pop();
@@ -112,7 +112,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
 4. Calcular Tarifa
 5. Rastrear Autocarro
 6. Area do Motorista
-9. Ajuda`;
+7. Ajuda`;
   }
 
   // LEVEL 1: Main menu selection
@@ -164,7 +164,7 @@ async function handleUSSD(sessionId: string, phoneNumber: string, text: string):
         // Driver menu - check if driver exists and prompt for password
         return await handleDriverMenuStateless(sessionId, phoneNumber, ['6']);
 
-      case '9':
+      case '7':
         return `END Sistema de Transportes - Ajuda
 
 Como Usar o Sistema:
