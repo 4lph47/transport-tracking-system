@@ -707,7 +707,7 @@ PARAGENS: ${v.paragens?.length || 0}
 `;
     }
 
-    const actionLabel = statusLabel === 'ONLINE' ? '4. Terminar Viagem' : '4. Iniciar Viagem';
+    const actionLabel = statusLabel === 'ONLINE' ? '4. Encerrar Viagem' : '4. Iniciar Viagem';
 
     dashboard += `
 1. Ver Paragens da Rota
@@ -803,12 +803,12 @@ Rota: ${v?.terminalPartida || 'N/A'} -> ${v?.terminalChegada || 'N/A'}
 1. Confirmar - Iniciar Viagem
 0. Cancelar`;
         } else {
-          return `CON TERMINAR VIAGEM
+          return `CON ENCERRAR VIAGEM
 
 Veiculo: ${t?.matricula || 'N/A'}
 Rota: ${v?.terminalPartida || 'N/A'} -> ${v?.terminalChegada || 'N/A'}
 
-1. Confirmar - Terminar Viagem
+1. Confirmar - Encerrar Viagem
 0. Cancelar`;
         }
       }
@@ -852,7 +852,7 @@ Paragens: ${driverData.via?.paragens?.length || 0}
 
 Bom trabalho!`;
         } else {
-          return `END VIAGEM TERMINADA
+          return `END VIAGEM ENCERRADA
 
 STATUS: OFFLINE
 
