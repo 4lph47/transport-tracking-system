@@ -59,3 +59,17 @@ ngrok.zip
 # Misc
 *.pem
 .cache/
+
+# Ignore all markdown files recursively
+**/*.md
+*.md
+
+# Exceptions for markdown files we want to keep
+!README.md
+!docs/getting-started.md
+!docs/architecture.md
+!docs/database.md
+!transport-admin/README.md
+!transport-client/README.md
+!transport-driver/README.md
+

@@ -1,190 +1,78 @@
 # 🚀 Sistema de Transportes de Moçambique
 
-Sistema completo de gestão e rastreamento de transportes públicos em tempo real.
-
-## 📦 Estrutura do Projeto
-
-```
-Transports-Aplication/
-├── transport-admin/      # Painel Administrativo (porta 3001)
-├── transport-client/     # Aplicação do Passageiro (porta 3000)
-├── transport-driver/     # Portal do Motorista (porta 3002)
-├── start-all.bat        # Script para iniciar todas as apps
-├── SYSTEM_OVERVIEW.md   # Visão geral completa do sistema
-└── DATABASE_STRUCTURE.md # Documentação da base de dados
-```
-
-## 🎯 Aplicações
-
-### 1. 🔧 Transport-Admin (Administração)
-Painel para gestão completa do sistema.
-
-**Funcionalidades:**
-- Dashboard com estatísticas
-- Gestão de províncias, municípios, vias e paragens
-- Gestão de proprietários, transportes e motoristas
-- Relatórios e análises
-
-**Acesso:** http://localhost:3001
-
-### 2. 📱 Transport-Client (Passageiro)
-Aplicação para passageiros pesquisarem e rastrearem transportes.
-
-**Funcionalidades:**
-- Subscrição ao serviço
-- Pesquisa de transportes
-- Mapa em tempo real
-- Rastreamento de veículos
-
-**Acesso:** http://localhost:3000
-
-### 3. 🚐 Transport-Driver (Motorista)
-Portal para motoristas gerenciarem suas viagens.
-
-**Funcionalidades:**
-- Login de motorista
-- Dashboard com status
-- Localização GPS
-- Contador de passageiros
-
-**Acesso:** http://localhost:3002
-
-## 🚀 Início Rápido
-
-### Opção 1: Iniciar Tudo de Uma Vez (Windows)
-
-```bash
-# Execute o script
-start-all.bat
-```
-
-### Opção 2: Iniciar Manualmente
-
-**Terminal 1 - Admin:**
-```bash
-cd transport-admin
-npm install
-npm run dev
-```
-
-**Terminal 2 - Client:**
-```bash
-cd transport-client
-npm install
-npm run dev
-```
-
-**Terminal 3 - Driver:**
-```bash
-cd transport-driver
-npm install
-npm run dev
-```
-
-## 🗄️ Base de Dados
-
-### Configurar Prisma (Opcional - para desenvolvimento avançado)
-
-```bash
-cd transport-admin
-npm install prisma @prisma/client --legacy-peer-deps
-npx prisma generate
-npx prisma db push
-npx prisma db seed
-```
-
-### Visualizar Dados
-
-```bash
-npx prisma studio
-```
-
-Abre em: http://localhost:5555
-
-## 📊 Dados de Teste
-
-### Motorista (Transport-Driver)
-- **BI**: `110203456789A`
-- **Senha**: `123456`
-
-### Administrador (Transport-Admin)
-- **Email**: `admin@transportmz.com`
-- **Senha**: `admin123`
-
-## 🛠️ Tecnologias
-
-- **Next.js 15** - Framework React
-- **TypeScript** - Tipagem estática
-- **Tailwind CSS** - Estilização
-- **Prisma** - ORM
-- **Leaflet** - Mapas interativos
-- **SQLite** - Base de dados
-
-## 📱 Portas
-
-| Aplicação | Porta | URL |
-|-----------|-------|-----|
-| Admin | 3001 | http://localhost:3001 |
-| Client | 3000 | http://localhost:3000 |
-| Driver | 3002 | http://localhost:3002 |
-| Prisma Studio | 5555 | http://localhost:5555 |
-
-## 📚 Documentação
-
-- **[SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md)** - Visão geral completa
-- **[DATABASE_STRUCTURE.md](DATABASE_STRUCTURE.md)** - Estrutura da base de dados
-- **[transport-admin/README.md](transport-admin/README.md)** - Documentação do Admin
-- **[transport-client/README.md](transport-client/README.md)** - Documentação do Client
-- **[transport-driver/README.md](transport-driver/README.md)** - Documentação do Driver
-
-## 🎯 Casos de Uso Implementados
-
-### UC1 - Subscrever ao Serviço
-✅ Utente pode subscrever ao serviço via `/subscribe`
-
-### UC2 - Pesquisar Transporte
-✅ Utente pode pesquisar transportes por município, via e paragem
-
-### UC3 - Registar Proprietário
-✅ Admin pode registar proprietários via `/proprietarios`
-
-## 🔄 Fluxo do Sistema
-
-```
-1. Admin registra rotas, paragens e transportes
-2. Motorista faz login e ativa status online
-3. Passageiro subscreve ao serviço
-4. Passageiro pesquisa transporte
-5. Sistema mostra transportes próximos no mapa
-6. Passageiro rastreia transporte em tempo real
-```
-
-## 🚧 Em Desenvolvimento
-
-- [ ] Rastreamento GPS em tempo real
-- [ ] Integração SMS
-- [ ] Notificações push
-- [ ] Sistema de pagamentos
-- [ ] App mobile
-
-## 🤝 Contribuir
-
-1. Fork o projeto
-2. Crie uma branch para sua feature
-3. Commit suas mudanças
-4. Push para a branch
-5. Abra um Pull Request
-
-## 📞 Suporte
-
-Para questões e suporte:
-- Email: suporte@transportmz.com
-- Documentação: Veja os arquivos `.md` na raiz
-
-## 📄 Licença
-
-Sistema de Transportes de Moçambique © 2026
+Bem-vindo ao repositório do **Sistema de Transportes de Moçambique**, uma plataforma completa de gestão, planeamento e rastreamento de transportes públicos urbanos (chapas, autocarros e frotas privadas) em tempo real.
 
 ---
 
-**Desenvolvido com ❤️ para Moçambique**
+## 🗺️ Navegação da Documentação
+* 🏠 **[Página Principal (Home)](README.md)**
+* 🏁 **[Guia de Início Rápido](docs/getting-started.md)**
+* 🏗️ **[Arquitetura do Sistema](docs/architecture.md)**
+* 🗄️ **[Estrutura da Base de Dados](docs/database.md)**
+
+---
+
+## 📋 Sobre o Projeto
+
+Este projeto foi desenhado para modernizar a experiência de transporte público em Moçambique, fornecendo ferramentas digitais tanto para passageiros como para motoristas e reguladores.
+
+### Componentes Principais:
+1. 🔧 **[Transport-Admin (Painel Administrativo)](transport-admin/README.md)**: Aplicação web para gestores do sistema visualizarem dashboards, monitorizarem frotas e cadastrarem rotas, paragens, municípios e viaturas.
+2. 📱 **[Transport-Client (Aplicação do Passageiro)](transport-client/README.md)**: Aplicação móvel/web para passageiros subscreverem ao serviço, pesquisarem autocarros e acompanharem o tempo estimado de chegada (ETA) no mapa em tempo real.
+3. 🚐 **[Transport-Driver (Portal do Motorista)](transport-driver/README.md)**: Portal móvel otimizado para os condutores transmitirem as suas coordenadas de GPS, gerirem o estado da viatura (Online/Offline) e o fluxo de passageiros.
+
+---
+
+## 📦 Estrutura do Repositório
+
+```
+Transports-Aplication/
+├── docs/                     # Documentação Geral do Sistema
+│   ├── getting-started.md    # Instruções de setup e credenciais
+│   ├── architecture.md       # Diagrama de blocos e fluxos do sistema
+│   └── database.md           # Modelos do Prisma e comandos do SQLite/Postgres
+├── transport-admin/          # Next.js App - Administração (Porta 3001)
+├── transport-client/         # Next.js App - Passageiro (Porta 3000)
+├── transport-driver/         # Next.js App - Motorista (Porta 3002)
+├── start-all.bat            # Script para iniciar as 3 apps em simultâneo
+└── package.json             # Ficheiro de configuração raiz
+```
+
+---
+
+## 🚀 Como Executar
+
+Para começar rapidamente com o projeto, siga as etapas descritas no **[Guia de Início Rápido](docs/getting-started.md)**. O comando padrão para iniciar todos os módulos locais ao mesmo tempo é:
+
+```bash
+# Executa as 3 aplicações em simultâneo (Windows)
+start-all.bat
+```
+
+---
+
+## 🗄️ Base de Dados e Modelação
+
+A aplicação usa o Prisma ORM ligado a uma base de dados local SQLite em desenvolvimento. Para instruções detalhadas de como redefinir, migrar ou semear dados de demonstração, consulte a página da **[Estrutura da Base de Dados](docs/database.md)**.
+
+---
+
+## 🎨 Arquitetura do Sistema e Tecnologias
+
+Para compreender como as aplicações Next.js partilham o mesmo backend de dados e comunicam o tráfego GPS dos veículos em tempo real para o mapa do passageiro, consulte a **[Arquitetura do Sistema](docs/architecture.md)**.
+
+---
+
+## 🤝 Como Contribuir
+
+1. Faça um Fork do projeto
+2. Crie uma Branch para a sua funcionalidade (`git checkout -b feature/minha-funcionalidade`)
+3. Efetue o Commit das suas alterações (`git commit -m 'Adiciona funcionalidade X'`)
+4. Faça o Push para a branch (`git push origin feature/minha-funcionalidade`)
+5. Abra um Pull Request
+
+---
+
+## 📄 Licença
+
+Sistema de Transportes de Moçambique © 2026. Desenvolvido para modernizar e melhorar a mobilidade urbana nacional.
