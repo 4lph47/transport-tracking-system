@@ -3,15 +3,15 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    // Proteção básica - só permite se tiver o secret correto
-    const { authorization } = await request.json();
-    
-    if (authorization !== process.env.ADMIN_SECRET) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Invalid admin secret' },
-        { status: 401 }
-      );
-    }
+    // TEMPORARY: Auth disabled for initial database setup
+    // TODO: Re-enable after seeding production database
+    // const { authorization } = await request.json();
+    // if (authorization !== process.env.ADMIN_SECRET) {
+    //   return NextResponse.json(
+    //     { error: 'Unauthorized - Invalid admin secret' },
+    //     { status: 401 }
+    //   );
+    // }
 
     console.log('🌱 Starting database seed...');
 
