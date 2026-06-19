@@ -15,15 +15,36 @@ export default function AdminLogin() {
     setError("");
     setLoading(true);
 
-    // Simple authentication (replace with real API call)
-    if (username === "admin" && password === "admin123") {
-      localStorage.setItem("admin", JSON.stringify({ username, role: "admin" }));
-      router.push("/admin");
-    } else {
-      setError("Credenciais inválidas");
+    try {
+      // Call admin authentication API
+      const response = await fetch("/api/auth/admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username, // For hardcoded admin
+          email: username, // Also try as email for database admin
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.admin) {
+        // Store admin data in localStorage
+        localStorage.setItem("admin", JSON.stringify(data.admin));
+        // Redirect to admin dashboard
+        router.push("/admin");
+      } else {
+        setError(data.error || "Credenciais inválidas");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("Erro ao fazer login. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
