@@ -87,16 +87,15 @@ export async function POST(request: Request) {
       nome,
       bi,
       nacionalidade,
-      dataInicioOperacoes,
+      birthDate,
       endereco,
       contacto1,
       contacto2,
-      foto,
-      certificado,
+      tipoProprietario,
     } = body;
 
     // Validação
-    if (!nome || !bi || !nacionalidade || !dataInicioOperacoes || !endereco || !contacto1) {
+    if (!nome || !bi || !nacionalidade || !birthDate || !endereco || !contacto1) {
       return NextResponse.json(
         { error: 'Campos obrigatórios em falta' },
         { status: 400 }
@@ -121,13 +120,11 @@ export async function POST(request: Request) {
         nome,
         bi,
         nacionalidade,
-        dataInicioOperacoes: new Date(dataInicioOperacoes),
+        birthDate: new Date(birthDate),
         endereco,
         contacto1: parseInt(contacto1),
         contacto2: contacto2 ? parseInt(contacto2) : null,
-        tipoProprietario: 'Empresa',
-        foto: foto || null,
-        certificado: certificado || null,
+        tipoProprietario: tipoProprietario || 'Indivíduo',
       },
     });
 
