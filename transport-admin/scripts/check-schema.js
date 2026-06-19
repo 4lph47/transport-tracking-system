@@ -16,9 +16,9 @@ async function checkSchema() {
       console.log(`   - ${col.column_name}: ${col.data_type}`);
     });
     
-    // Check if dataInicioOperacoes exists
-    const hasColumn = result.some(col => col.column_name === 'dataInicioOperacoes');
-    console.log(`\n${hasColumn ? '✅' : '❌'} dataInicioOperacoes column ${hasColumn ? 'exists' : 'MISSING'}`);
+    // Check if birthDate exists
+    const hasColumn = result.some(col => col.column_name === 'birthDate');
+    console.log(`\n${hasColumn ? '✅' : '❌'} birthDate column ${hasColumn ? 'exists' : 'MISSING'}`);
     
   } catch (error) {
     console.error('❌ Error:', error.message);

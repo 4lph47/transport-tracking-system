@@ -132,7 +132,7 @@ async function main() {
             nome: gerarNomeEmpresa(i),
             bi: bi,
             nacionalidade: "Moçambicana",
-            dataInicioOperacoes: new Date(1990 + (i % 30), 0, 1), // Empresas "fundadas" entre 1990-2020
+            birthDate: new Date(1990 + (i % 30), 0, 1), // Empresas "fundadas" entre 1990-2020
             endereco: gerarEnderecoEmpresa(i),
             contacto1: gerarContactoEmpresa(i),
             contacto2: gerarContactoEmpresa(i) + 1000,

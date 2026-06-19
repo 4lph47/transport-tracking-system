@@ -22,16 +22,16 @@ async function createProprietarios() {
     for (let i = 0; i < empresas.length; i++) {
       const empresa = empresas[i];
       
-      // Set dataInicioOperacoes to a date between 2010-2020
+      // Set birthDate to a date between 2010-2020
       const year = 2010 + (i % 11);
       const month = Math.floor(Math.random() * 12);
       const day = Math.floor(Math.random() * 28) + 1;
-      const dataInicioOperacoes = new Date(year, month, day);
+      const birthDate = new Date(year, month, day);
       
       await prisma.proprietario.create({
         data: {
           ...empresa,
-          dataInicioOperacoes,
+          birthDate,
           tipoProprietario: "Empresa"
         }
       });

@@ -74,7 +74,7 @@ async function main() {
         nome: nomesEmpresas[i],
         bi: String(500000000 + i).padStart(9, '0'),
         nacionalidade: "Moçambicana",
-        dataInicioOperacoes: new Date(1990 + i, 0, 1),
+        birthDate: new Date(1990 + i, 0, 1),
         endereco: `Av. Julius Nyerere, ${100 + (i * 50)}, Maputo`,
         contacto1: 21300000 + i,
         contacto2: 21400000 + i,
