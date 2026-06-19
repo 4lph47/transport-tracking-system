@@ -154,13 +154,11 @@ model Proprietario {
   nome                  String
   bi                    String   @unique
   nacionalidade         String
-  dataInicioOperacoes   DateTime // Data de início de operações da empresa
+  birthDate             DateTime // Birth date or company establishment date
   endereco              String
   contacto1             Int
   contacto2             Int?
-  tipoProprietario      String   @default("Empresa") // Apenas "Empresa"
-  foto                  String?  // URL do logo da empresa
-  certificado           String?  // URL do certificado de autenticidade (PDF) para empresas
+  tipoProprietario      String   @default("Indivíduo") // "Empresa" ou "Indivíduo"
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
