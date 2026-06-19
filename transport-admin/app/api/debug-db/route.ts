@@ -20,8 +20,18 @@ export async function GET() {
       prisma.municipio.count().catch((e) => ({ error: e.message })),
     ]);
     
-    // Get sample proprietario
-    const sampleProprietario = await prisma.proprietario.findFirst().catch(() => null);
+    // Get sample proprietario with error details
+    let sampleProprietario = null;
+    let proprietarioError = null;
+    try {
+      sampleProprietario = await prisma.proprietario.findFirst();
+    } catch (e: any) {
+      proprietarioError = {
+        message: e.message,
+        code: e.code,
+        meta: e.meta,
+      };
+    }
     
     // Get sample transporte
     const sampleTransporte = await prisma.transporte.findFirst().catch(() => null);
@@ -47,6 +57,7 @@ export async function GET() {
           bi: sampleProprietario.bi,
           fields: Object.keys(sampleProprietario),
         } : null,
+        proprietarioError,
         transporte: sampleTransporte ? {
           id: sampleTransporte.id,
           matricula: sampleTransporte.matricula,
