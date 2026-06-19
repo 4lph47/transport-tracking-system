@@ -14,10 +14,10 @@ export async function GET(request: Request) {
       const total = await prisma.via.count({
         where: search ? {
           OR: [
-            { nome: { contains: search, mode: 'insensitive' as const } },
-            { codigo: { contains: search, mode: 'insensitive' as const } },
+            { nome: { contains: search } },
+            { codigo: { contains: search } },
           ],
-        } : undefined,
+        } : {},
       });
 
       return NextResponse.json({ total });
@@ -27,16 +27,20 @@ export async function GET(request: Request) {
 
     const whereClause = search ? {
       OR: [
-        { nome: { contains: search, mode: 'insensitive' as const } },
-        { codigo: { contains: search, mode: 'insensitive' as const } },
+        { nome: { contains: search } },
+        { codigo: { contains: search } },
       ],
-    } : undefined;
+    } : {};
 
     const [vias, total] = await Promise.all([
       prisma.via.findMany({
         where: whereClause,
         include: {
-          municipio: true,
+          municipio: {
+            select: {
+              nome: true,
+            },
+          },
           _count: {
             select: {
               paragens: true,

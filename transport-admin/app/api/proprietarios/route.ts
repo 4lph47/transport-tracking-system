@@ -14,10 +14,10 @@ export async function GET(request: Request) {
       const total = await prisma.proprietario.count({
         where: search ? {
           OR: [
-            { nome: { contains: search, mode: 'insensitive' as const } },
-            { bi: { contains: search, mode: 'insensitive' as const } },
+            { nome: { contains: search } },
+            { bi: { contains: search } },
           ],
-        } : undefined,
+        } : {},
       });
 
       return NextResponse.json({ total });
@@ -27,10 +27,10 @@ export async function GET(request: Request) {
 
     const whereClause = search ? {
       OR: [
-        { nome: { contains: search, mode: 'insensitive' as const } },
-        { bi: { contains: search, mode: 'insensitive' as const } },
+        { nome: { contains: search } },
+        { bi: { contains: search } },
       ],
-    } : undefined;
+    } : {};
 
     const [proprietarios, total] = await Promise.all([
       prisma.proprietario.findMany({
@@ -45,6 +45,11 @@ export async function GET(request: Request) {
                   modelo: true,
                 },
               },
+            },
+          },
+          _count: {
+            select: {
+              transportes: true,
             },
           },
         },
