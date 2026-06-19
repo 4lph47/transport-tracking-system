@@ -36,22 +36,7 @@ export async function GET(request: Request) {
       prisma.proprietario.findMany({
         where: whereClause,
         include: {
-          transportes: {
-            include: {
-              transporte: {
-                select: {
-                  id: true,
-                  matricula: true,
-                  modelo: true,
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              transportes: true,
-            },
-          },
+          transportes: true,
         },
         orderBy: {
           nome: 'asc',
