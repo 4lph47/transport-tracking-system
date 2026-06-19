@@ -12,7 +12,7 @@ export default function NovoProprietario() {
     nome: "",
     bi: "",
     nacionalidade: "Moçambicana",
-    dataInicioOperacoes: "",
+    birthDate: "",
     endereco: "",
     contacto1: "",
     contacto2: "",
@@ -93,8 +93,8 @@ export default function NovoProprietario() {
       return;
     }
     
-    if (!formData.dataInicioOperacoes) {
-      showNotification('Por favor, selecione a data de início de operações', 'error');
+    if (!formData.birthDate) {
+      showNotification('Por favor, selecione a data de nascimento/fundação', 'error');
       return;
     }
     
@@ -131,7 +131,7 @@ export default function NovoProprietario() {
           nome: formData.nome.trim(),
           bi: formData.bi.trim(),
           nacionalidade: formData.nacionalidade.trim(),
-          dataInicioOperacoes: formData.dataInicioOperacoes,
+          birthDate: formData.birthDate,
           endereco: formData.endereco.trim(),
           contacto1: formData.contacto1.trim(),
           contacto2: formData.contacto2.trim() || null,
@@ -303,8 +303,8 @@ export default function NovoProprietario() {
                     </label>
                     <input
                       type="date"
-                      value={formData.dataInicioOperacoes}
-                      onChange={(e) => setFormData({...formData, dataInicioOperacoes: e.target.value})}
+                      value={formData.birthDate}
+                      onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-gray-900"
                       required
                     />

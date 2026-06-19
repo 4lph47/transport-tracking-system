@@ -9,7 +9,7 @@ interface Proprietario {
   nome: string;
   bi: string;
   nacionalidade: string;
-  dataInicioOperacoes: string;
+  birthDate: string;
   endereco: string;
   contacto1: number;
   contacto2?: number;
@@ -29,7 +29,7 @@ export default function EditarProprietario() {
     nome: "",
     bi: "",
     nacionalidade: "",
-    dataInicioOperacoes: "",
+    birthDate: "",
     endereco: "",
     contacto1: "",
     contacto2: "",
@@ -58,14 +58,14 @@ export default function EditarProprietario() {
       const data: Proprietario = await response.json();
       
       // Format date for input (YYYY-MM-DD)
-      const date = new Date(data.dataInicioOperacoes);
+      const date = new Date(data.birthDate);
       const formattedDate = date.toISOString().split('T')[0];
       
       setFormData({
         nome: data.nome,
         bi: data.bi,
         nacionalidade: data.nacionalidade || "",
-        dataInicioOperacoes: formattedDate,
+        birthDate: formattedDate,
         endereco: data.endereco || "",
         contacto1: data.contacto1.toString(),
         contacto2: data.contacto2 ? data.contacto2.toString() : "",
@@ -155,8 +155,8 @@ export default function EditarProprietario() {
       return;
     }
     
-    if (!formData.dataInicioOperacoes) {
-      showNotification('Por favor, selecione a data de início de operações', 'error');
+    if (!formData.birthDate) {
+      showNotification('Por favor, selecione a data de nascimento/fundação', 'error');
       return;
     }
     
@@ -193,7 +193,7 @@ export default function EditarProprietario() {
           nome: formData.nome.trim(),
           bi: formData.bi.trim(),
           nacionalidade: formData.nacionalidade.trim(),
-          dataInicioOperacoes: formData.dataInicioOperacoes,
+          birthDate: formData.birthDate,
           endereco: formData.endereco.trim(),
           contacto1: formData.contacto1.trim(),
           contacto2: formData.contacto2.trim() || null,
@@ -380,8 +380,8 @@ export default function EditarProprietario() {
                     </label>
                     <input
                       type="date"
-                      value={formData.dataInicioOperacoes}
-                      onChange={(e) => setFormData({...formData, dataInicioOperacoes: e.target.value})}
+                      value={formData.birthDate}
+                      onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 text-gray-900"
                       required
                     />

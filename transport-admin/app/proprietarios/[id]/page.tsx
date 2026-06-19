@@ -26,7 +26,7 @@ interface Proprietario {
   nome: string;
   bi: string;
   nacionalidade: string;
-  dataInicioOperacoes: string;
+  birthDate: string;
   endereco: string;
   contacto1: number;
   contacto2?: number;
@@ -665,9 +665,9 @@ export default function ProprietarioDetalhes() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Data de Início de Operações</label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Data de Nascimento/Fundação</label>
                   <p className="text-gray-600">
-                    {proprietario.dataInicioOperacoes ? new Date(proprietario.dataInicioOperacoes).toLocaleDateString('pt-PT') : 'N/A'}
+                    {proprietario.birthDate ? new Date(proprietario.birthDate).toLocaleDateString('pt-PT') : 'N/A'}
                   </p>
                 </div>
 
